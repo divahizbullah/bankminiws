@@ -229,9 +229,9 @@ function openSvc(g,i){
   '<div><label>Tanggal</label><input type="date" id="j_tgl" value="'+today()+'"></div>'+
   (g==='digital'?'<div><label>Jenis transaksi</label><select id="j_jn"><option>Top Up Saldo</option><option>Kirim / Transfer</option><option>Tarik Tunai</option></select></div>':'')+
   '<div><label>'+lb+'</label><input id="j_no" inputmode="numeric"></div>'+
-  '<div><label>Pembeli</label><select id="j_pb" onchange="pbChg()"'+(sw?' disabled':'')+'><option value="siswa">Siswa</option><option value="lain"'+(sw?'':'')+'>Lain-lain</option></select></div>'+
-  '<div id="j_sw"><label>Kelas</label><select id="j_kl" onchange="klChg()"'+(sw?' disabled':'')+'><option value="">- pilih kelas -</option>'+kelasList().map(function(k){return '<option'+(sw&&k===wk?' selected':'')+'>'+esc(k)+'</option>'}).join('')+'</select></div>'+
-  '<div id="j_sw2"><label>Nama siswa</label><select id="j_sd" onchange="jtot()"'+(sw?' disabled':'')+'></select></div>'+
+  '<div><label>Pembeli</label><select id="j_pb" onchange="pbChg()"><option value="siswa">Siswa</option><option value="lain">Lain-lain</option></select></div>'+
+  '<div id="j_sw"><label>Kelas</label><select id="j_kl" onchange="klChg()"><option value="">- pilih kelas -</option>'+kelasList().map(function(k){return '<option>'+esc(k)+'</option>'}).join('')+'</select></div>'+
+  '<div id="j_sw2"><label>Nama siswa</label><select id="j_sd" onchange="jtot()"></select></div>'+
   '<div id="j_lw" class="hide"><label>Nama pelanggan (opsional)</label><input id="j_nm"></div>'+
   '<div><label>'+(g==='bayar'?'Nominal Tagihan (Rp)':'Nominal (Rp)')+'</label><input type="number" id="j_nom" min="1" inputmode="numeric" oninput="jtot()"></div>'+
   '<div><label>Biaya Admin / Keuntungan (Rp)</label><input type="number" id="j_fee" min="0" value="0" inputmode="numeric" oninput="jtot()"></div>'+
@@ -239,7 +239,7 @@ function openSvc(g,i){
   '<div><label>Total Diterima dari Pelanggan</label><input id="j_tot" readonly value="Rp 0"></div>'+
   '<div><label>Petugas</label><input id="j_p" value="'+esc(pn)+'"'+(sw?' readonly':'')+'></div></div><br><label>Keterangan (opsional)</label><input id="j_ket" placeholder="mis. tagihan bulan Oktober"><br><br>'+
   '<button class="p" onclick="saveSvc(\''+g+'\','+i+')">Simpan Transaksi</button> <button onclick="closeModal()">Batal</button><div id="fm"></div>');
-  klChg(sw?(db.siswa.filter(function(z){return z.nama===who&&z.kelas===wk})[0]||{}).id:'');curSvc=g;jtot();$('j_no').focus();
+  klChg('');curSvc=g;jtot();$('j_no').focus();
 }
 var curSvc='';
 function pbChg(){var sw=$('j_pb').value==='siswa';['j_sw','j_sw2'].forEach(function(id){$(id).classList.toggle('hide',!sw)});$('j_lw').classList.toggle('hide',sw);jtot()}
