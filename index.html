@@ -67,6 +67,7 @@ button.big.alt{background:rgba(255,255,255,.16);color:#fff;border:1px solid rgba
 .svc{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
 .svb{display:flex;flex-direction:column;align-items:center;gap:8px;padding:18px 10px;border-radius:14px;background:var(--bg);border:1px solid var(--bd);font-weight:600;text-align:center}
 .svb i{font-style:normal;font-size:28px;width:56px;height:56px;display:grid;place-items:center;border-radius:16px;background:var(--pri2)}.svb:hover{border-color:var(--pri)}
+.credit{text-align:center;padding:14px 12px 22px;font-size:12px;color:var(--mut,#6b7280);opacity:.85}.credit b{font-weight:600}@media print{.credit{display:none}}
 </style>
 </head>
 <body>
@@ -419,5 +420,6 @@ document.addEventListener('keydown',function(e){if(e.key==='Escape')closeModal()
 $('v').innerHTML='<p class="mut">Memuat data...</p>';
 boot();
 </script>
+<div class="credit">Created by <b>Diva Hizbullah, S.Kom</b></div>
 </body>
 </html>
