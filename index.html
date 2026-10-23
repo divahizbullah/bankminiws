@@ -53,12 +53,14 @@ th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--bd);white-s
 <div id="le" class="msg e hide"></div><br>
 <button class="p" onclick="doLogin()" style="width:100%">Masuk</button>
 <p class="mut" id="ld"></p></div></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 var USERS={admin:{p:'admin123',n:'Admin'},kepsek:{p:'kepsek123',n:'Kepala Sekolah'}};
 var KAT=['Belanja Barang Dagangan','Operasional','Honor / Upah','ATK & Perlengkapan','Sosial / Kegiatan Sekolah','Lainnya'];
 var JN={setor:'Setoran Tabungan',tarik:'Penarikan Tabungan',masuk:'Pemasukan Koperasi',keluar:'Pengeluaran Koperasi'};
-var db={siswa:[],trx:[]},role=null,who='',wk='',lm='guru',tab='input',msg='',flt={};
+var db={siswa:[],trx:[]},role=null,who='',wk='',lm='guru',st='kelas',sf='',lk='',tab='input',msg='',flt={};
 try{var s=localStorage.getItem('kop_db');if(s)db=JSON.parse(s)}catch(e){}
+if(!db.siswa)db.siswa=[];if(!db.trx)db.trx=[];if(!db.kelas)db.kelas=[];if(!db.imp)db.imp=[];
 try{var r=sessionStorage.getItem('kop_role');if(r){var o=JSON.parse(r);role=o.r;who=o.n;wk=o.k||''}}catch(e){}
 function save(){try{localStorage.setItem('kop_db',JSON.stringify(db))}catch(e){}}
 function $(i){return document.getElementById(i)}
@@ -69,10 +71,10 @@ function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2
 function isA(){return role==='admin'}
 function sis(id){return db.siswa.find(function(x){return x.id===id})}
 function saldo(id){return db.trx.reduce(function(a,t){return t.sid===id?a+(t.jenis==='setor'?t.jml:t.jenis==='tarik'?-t.jml:0):a},0)}
-function kelasList(){var k={};db.siswa.forEach(function(s){k[s.kelas]=1});return Object.keys(k).sort()}
+function kelasList(){var k={};db.kelas.forEach(function(x){k[x]=1});db.siswa.forEach(function(s){k[s.kelas]=1});return Object.keys(k).sort()}
 function opts(arr,sel,all){return (all?'<option value="">'+all+'</option>':'')+arr.map(function(x){return '<option'+(x===sel?' selected':'')+'>'+esc(x)+'</option>'}).join('')}
 function authBtn(){role=null;who='';wk='';try{sessionStorage.removeItem('kop_role')}catch(e){};tab='input';msg='';render()}
-function lt(m){lm=m;$('tg').classList.toggle('on',m==='guru');$('ts').classList.toggle('on',m==='siswa');$('pg').classList.toggle('hide',m!=='guru');$('ps').classList.toggle('hide',m!=='siswa');$('le').classList.add('hide');$('ld').textContent=m==='guru'?'Demo: admin / admin123 · kepsek / kepsek123':'Daftar kelas dan nama diambil dari menu Data Siswa yang diisi guru.';if(m==='siswa')fillLogin()}
+function lt(m){lm=m;$('tg').classList.toggle('on',m==='guru');$('ts').classList.toggle('on',m==='siswa');$('pg').classList.toggle('hide',m!=='guru');$('ps').classList.toggle('hide',m!=='siswa');$('le').classList.add('hide');$('ld').textContent=m==='guru'?'Demo: admin / admin123 · kepsek / kepsek123':'Daftar kelas dan nama diambil dari menu Administrasi yang diisi guru.';if(m==='siswa')fillLogin()}
 function fillLogin(){var ks=kelasList(),k=$('sk'),cur=k.value;k.innerHTML=ks.length?opts(ks,cur):'<option value="">Belum ada data kelas</option>';var l=db.siswa.filter(function(x){return x.kelas===k.value}).sort(function(a,b){return a.nama.localeCompare(b.nama)});$('sn').innerHTML=l.length?l.map(function(x){return '<option value="'+x.id+'">'+esc(x.nama)+'</option>'}).join(''):'<option value="">Belum ada nama siswa</option>'}
 function ok(r,n,k){role=r;who=n;wk=k||'';try{sessionStorage.setItem('kop_role',JSON.stringify({r:r,n:n,k:wk}))}catch(e){};lg.classList.add('hide');$('lp').value='';tab=r==='admin'?'dash':'input';msg='';render()}
 function doLogin(){var e=$('le');e.classList.add('hide');
@@ -82,9 +84,9 @@ function setTab(t){tab=t;msg='';render()}
 function render(){
   if(!role){lg.classList.remove('hide');$('rb').textContent='Belum masuk';$('lb').classList.add('hide');$('nav').innerHTML='';$('v').innerHTML='';lt(lm);return}
   $('lb').classList.remove('hide');$('rb').textContent=isA()?'Guru: '+who:'Siswa: '+who+' ('+wk+')';$('lb').textContent='Keluar';
-  var tabs=isA()?[['dash','Dashboard'],['input','Input'],['riwayat','Riwayat'],['siswa','Data Siswa'],['laporan','Laporan']]:[['input','Input Transaksi'],['riwayat','Riwayat'],['siswa','Saldo Siswa']];
+  var tabs=isA()?[['dash','Dashboard'],['input','Input'],['riwayat','Riwayat'],['admin','Administrasi'],['laporan','Laporan']]:[['input','Input Transaksi'],['riwayat','Riwayat'],['siswa','Saldo Siswa']];
   $('nav').innerHTML=tabs.map(function(t){return '<button class="'+(tab===t[0]?'on':'')+'" onclick="setTab(\''+t[0]+'\')">'+t[1]+'</button>'}).join('');
-  var f={dash:vDash,input:vInput,riwayat:vRiwayat,siswa:vSiswa,laporan:vLaporan}[tab]||vInput;
+  var f={dash:vDash,input:vInput,riwayat:vRiwayat,siswa:vSiswa,admin:vAdmin,laporan:vLaporan}[tab]||vInput;
   $('v').innerHTML=f();if(tab==='input')fillSiswa();
 }
 function sums(){var s={tab:0,masuk:0,keluar:0,setor:0,tarik:0};db.trx.forEach(function(t){if(t.jenis==='setor')s.setor+=t.jml;else if(t.jenis==='tarik')s.tarik+=t.jml;else s[t.jenis]+=t.jml});s.tab=s.setor-s.tarik;s.kas=s.tab+s.masuk-s.keluar;return s}
@@ -133,14 +135,64 @@ function filt(){return db.trx.filter(function(t){var s=sis(t.sid);return(!flt.k|
 function fbar(){return '<div class="grid2"><div><label>Kelas</label><select onchange="flt.k=this.value;render()">'+opts(kelasList(),flt.k,'Semua')+'</select></div><div><label>Jenis</label><select onchange="flt.j=this.value;render()"><option value="">Semua</option>'+Object.keys(JN).map(function(k){return '<option value="'+k+'"'+(flt.j===k?' selected':'')+'>'+JN[k]+'</option>'}).join('')+'</select></div><div><label>Dari</label><input type="date" value="'+(flt.a||'')+'" onchange="flt.a=this.value;render()"></div><div><label>Sampai</label><input type="date" value="'+(flt.b||'')+'" onchange="flt.b=this.value;render()"></div></div>'}
 function vRiwayat(){var l=filt();return '<div class="card"><h2>Riwayat Transaksi</h2>'+fbar()+'<br>'+tbl(l,isA())+'</div>'}
 function delTrx(id){if(!confirm('Hapus transaksi ini?'))return;db.trx=db.trx.filter(function(t){return t.id!==id});save();render()}
-function vSiswa(){
-  var l=db.siswa.slice().sort(function(a,b){return a.kelas.localeCompare(b.kelas)||a.nama.localeCompare(b.nama)});
-  var form=isA()?'<div class="card"><h2>Tambah Nama Siswa</h2><div class="grid2"><div><label>Kelas</label><input id="n_k" placeholder="mis. 7A"></div><div style="grid-column:span 2"><label>Nama siswa (satu nama per baris, bisa banyak sekaligus)</label><textarea id="n_n" rows="4" placeholder="Budi Santoso&#10;Siti Aminah"></textarea></div></div><br><button class="p" onclick="addSiswa()">Tambahkan</button><div id="fm">'+msg+'</div></div>':'';
-  return form+'<div class="card"><h2>Daftar Siswa &amp; Saldo ('+l.length+')</h2><div class="tw"><table><tr><th>Nama</th><th>Kelas</th><th class="r">Saldo Tabungan</th>'+(isA()?'<th></th>':'')+'</tr>'+(l.map(function(s){return '<tr><td>'+esc(s.nama)+'</td><td>'+esc(s.kelas)+'</td><td class="r">'+rp(saldo(s.id))+'</td>'+(isA()?'<td><button class="d" onclick="delSiswa(\''+s.id+'\')">Hapus</button></td>':'')+'</tr>'}).join('')||'<tr><td colspan="4" class="mut">Belum ada siswa.</td></tr>')+'</table></div></div>';
+function sorted(){return db.siswa.slice().sort(function(a,b){return a.kelas.localeCompare(b.kelas)||a.nama.localeCompare(b.nama)})}
+function siswaTbl(l,del){return '<div class="tw"><table><tr><th>Nama</th><th>Kelas</th><th class="r">Saldo Tabungan</th>'+(del?'<th></th>':'')+'</tr>'+(l.map(function(s){return '<tr><td>'+esc(s.nama)+'</td><td>'+esc(s.kelas)+'</td><td class="r">'+rp(saldo(s.id))+'</td>'+(del?'<td><button class="d" onclick="delSiswa(\''+s.id+'\')">Hapus</button></td>':'')+'</tr>'}).join('')||'<tr><td colspan="4" class="mut">Belum ada siswa.</td></tr>')+'</table></div>'}
+function vSiswa(){var l=sorted();return '<div class="card"><h2>Saldo Siswa ('+l.length+')</h2>'+siswaTbl(l,false)+'</div>'}
+function amsg(m,e,rr){msg='<div class="msg'+(e?' e':'')+'">'+m+'</div>';if(rr)render();else if($('am'))$('am').innerHTML=msg;window.scrollTo(0,0)}
+function setSt(x){st=x;msg='';render()}
+function esel(id,sel){return '<select id="'+id+'">'+opts(kelasList(),sel,'Pilih kelas')+'</select>'}
+function vAdmin(){
+  return '<div class="card"><h2>Administrasi</h2><div style="display:flex;gap:6px;flex-wrap:wrap"><button class="'+(st==='kelas'?'on':'')+'" onclick="setSt(\'kelas\')">Masukan Kelas</button><button class="'+(st==='siswa'?'on':'')+'" onclick="setSt(\'siswa\')">Masukan Data Siswa</button></div><div id="am">'+msg+'</div></div>'+(st==='kelas'?aKelas():aSiswa());
 }
-function addSiswa(){var k=$('n_k').value.trim().toUpperCase(),n=$('n_n').value.split('\n').map(function(x){return x.trim()}).filter(Boolean);
-  if(!k||!n.length){msg='<div class="msg e">Isi kelas dan minimal satu nama.</div>';return render()}
-  n.forEach(function(x){db.siswa.push({id:uid(),nama:x,kelas:k})});save();msg='<div class="msg">'+n.length+' siswa ditambahkan ke kelas '+esc(k)+'.</div>';render()}
+function aKelas(){
+  var ks=kelasList();
+  return '<div class="card"><h2>Tambah Kelas</h2><div class="grid2"><div><label>Nama kelas</label><input id="k_n" placeholder="mis. X-AKL-1" onkeydown="if(event.key===\'Enter\')addKelas()"></div></div><br><button class="p" onclick="addKelas()">Tambah Kelas</button></div>'+
+  '<div class="card"><h2>Daftar Kelas ('+ks.length+')</h2><div class="tw"><table><tr><th>Kelas</th><th class="r">Jumlah Siswa</th><th></th></tr>'+(ks.map(function(k,i){return '<tr><td>'+esc(k)+'</td><td class="r">'+db.siswa.filter(function(x){return x.kelas===k}).length+'</td><td><button class="d" onclick="delKelas('+i+')">Hapus</button></td></tr>'}).join('')||'<tr><td colspan="3" class="mut">Belum ada kelas. Tambahkan kelas terlebih dahulu.</td></tr>')+'</table></div></div>';
+}
+function addKelas(){var k=$('k_n').value.trim().toUpperCase().replace(/\s+/g,' ');
+  if(!k)return amsg('Nama kelas wajib diisi.',1);
+  if(kelasList().indexOf(k)>=0)return amsg('Kelas '+esc(k)+' sudah ada.',1);
+  db.kelas.push(k);save();lk=k;amsg('Kelas '+esc(k)+' berhasil ditambahkan.',0,1)}
+function delKelas(i){var k=kelasList()[i],ids=db.siswa.filter(function(x){return x.kelas===k}).map(function(x){return x.id});
+  if(!confirm(ids.length?'Hapus kelas '+k+' beserta '+ids.length+' siswa dan seluruh transaksinya?':'Hapus kelas '+k+'?'))return;
+  db.kelas=db.kelas.filter(function(x){return x!==k});db.siswa=db.siswa.filter(function(x){return x.kelas!==k});db.trx=db.trx.filter(function(t){return ids.indexOf(t.sid)<0});save();amsg('Kelas '+esc(k)+' dihapus.',0,1)}
+function aSiswa(){
+  var oles=['Admin','Kepala Sekolah','Wali Kelas','Guru Lain'],h=db.imp.slice(-8).reverse(),l=sorted().filter(function(x){return !sf||x.kelas===sf});
+  return '<div class="card"><h2>Import dari Excel</h2><div class="grid2"><div><label>Kelas tujuan</label>'+esel('i_k',lk)+'</div><div><label>Diimport oleh</label><select id="i_o">'+opts(oles,who==='Kepala Sekolah'?'Kepala Sekolah':'Admin')+'</select></div><div><label>Nama guru (opsional)</label><input id="i_n" placeholder="mis. Bu Ani"></div><div><label>File Excel / CSV</label><input type="file" id="i_f" accept=".xlsx,.xls,.csv"></div></div><br><button class="p" onclick="doImport()">Import</button> <button onclick="tplDl()">Unduh Template</button><p class="mut">Isi kolom Nama Siswa di template, satu siswa per baris. Kelas dipilih di sini, bukan di dalam file. Nama yang sudah ada di kelas yang sama dilewati.</p></div>'+
+  '<div class="card"><h2>Tambah Manual</h2><div class="grid2"><div><label>Kelas</label>'+esel('m_k',lk)+'</div><div style="grid-column:span 2"><label>Nama siswa (satu nama per baris)</label><textarea id="m_n" rows="4" placeholder="Budi Santoso&#10;Siti Aminah"></textarea></div></div><br><button class="p" onclick="addSiswa()">Tambahkan</button></div>'+
+  '<div class="card"><h2>Riwayat Import</h2><div class="tw"><table><tr><th>Tanggal</th><th>Kelas</th><th>Diimport oleh</th><th class="r">Siswa</th><th>File</th></tr>'+(h.map(function(x){return '<tr><td>'+x.tgl+'</td><td>'+esc(x.kelas)+'</td><td>'+esc(x.oleh)+'</td><td class="r">'+x.jml+'</td><td>'+esc(x.file)+'</td></tr>'}).join('')||'<tr><td colspan="5" class="mut">Belum ada import.</td></tr>')+'</table></div></div>'+
+  '<div class="card"><h2>Daftar Siswa ('+l.length+')</h2><div style="max-width:240px"><label>Filter kelas</label><select onchange="sf=this.value;render()">'+opts(kelasList(),sf,'Semua kelas')+'</select></div><br>'+siswaTbl(l,true)+'</div>';
+}
+function addNames(names,k){var have={},n=0,d=0;db.siswa.forEach(function(x){if(x.kelas===k)have[x.nama.toLowerCase()]=1});
+  names.forEach(function(nm){nm=String(nm==null?'':nm).replace(/\s+/g,' ').trim();if(!nm)return;if(have[nm.toLowerCase()]){d++;return}have[nm.toLowerCase()]=1;db.siswa.push({id:uid(),nama:nm,kelas:k});n++});
+  if(n&&db.kelas.indexOf(k)<0)db.kelas.push(k);return[n,d]}
+function addSiswa(){var k=$('m_k').value,n=$('m_n').value.split('\n');
+  if(!k||!n.join('').trim())return amsg('Pilih kelas dan isi minimal satu nama.',1);
+  lk=k;var r=addNames(n,k);save();amsg(r[0]+' siswa ditambahkan ke kelas '+esc(k)+(r[1]?'. '+r[1]+' nama sudah ada dan dilewati.':'.'),0,1)}
+function parseCsv(t){return t.replace(/^\ufeff/,'').split(/\r?\n/).map(function(l){return l.split(/[;,\t]/).map(function(c){return c.replace(/^"|"$/g,'').trim()})})}
+function doImport(){
+  var k=$('i_k').value,f=$('i_f').files[0],o=$('i_o').value,n=$('i_n').value.trim();
+  if(!k)return amsg('Pilih kelas tujuan terlebih dahulu.',1);
+  if(!f)return amsg('Pilih file Excel atau CSV terlebih dahulu.',1);
+  lk=k;var by=o+(n?' - '+n:''),rd=new FileReader(),csv=/\.csv$/i.test(f.name);
+  if(!csv&&!window.XLSX)return amsg('Pembaca Excel belum termuat (perlu internet). Simpan file sebagai CSV lalu import ulang.',1);
+  rd.onerror=function(){amsg('File tidak dapat dibaca.',1)};
+  rd.onload=function(){var rows;try{rows=csv?parseCsv(rd.result):XLSX.utils.sheet_to_json(XLSX.read(rd.result,{type:'array'}).Sheets[XLSX.read(rd.result,{type:'array'}).SheetNames[0]],{header:1,defval:''})}catch(e){return amsg('File tidak valid atau rusak.',1)}finImp(rows,k,by,f.name)};
+  if(csv)rd.readAsText(f);else rd.readAsArrayBuffer(f);
+}
+function finImp(rows,k,by,fn){
+  var ci=-1,s0=0,i,names=[];
+  for(i=0;i<Math.min(rows.length,10);i++){var j=rows[i].findIndex(function(c){return /nama/i.test(String(c))});if(j>=0){ci=j;s0=i+1;break}}
+  if(ci<0)ci=(rows[0]&&rows[0].length>1)?1:0;
+  for(i=s0;i<rows.length;i++){var nm=String(rows[i][ci]==null?'':rows[i][ci]).trim();if(!nm||/^contoh/i.test(nm)||/^\d+$/.test(nm))continue;names.push(nm)}
+  if(!names.length)return amsg('Tidak ada nama siswa ditemukan. Pastikan nama diisi di kolom Nama Siswa.',1);
+  var r=addNames(names,k);db.imp.push({ts:Date.now(),tgl:today(),kelas:k,oleh:by,jml:r[0],file:fn});save();
+  amsg('Import selesai: '+r[0]+' siswa ditambahkan ke kelas '+esc(k)+' oleh '+esc(by)+(r[1]?'. '+r[1]+' nama sudah ada dan dilewati.':'.'),0,1)}
+function tplDl(){
+  var rows=[['No','Nama Siswa'],[1,'Contoh: Budi Santoso (hapus baris ini)']];
+  if(window.XLSX){var ws=XLSX.utils.aoa_to_sheet(rows);ws['!cols']=[{wch:6},{wch:42}];var wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Data Siswa');XLSX.writeFile(wb,'template-data-siswa.xlsx')}
+  else{var a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\ufeff'+rows.map(function(r){return r.join(',')}).join('\n')],{type:'text/csv'}));a.download='template-data-siswa.csv';a.click()}}
+
 function delSiswa(id){var s=sis(id);if(!confirm('Hapus '+s.nama+'? Riwayat transaksi siswa ini juga ikut dihapus.'))return;db.siswa=db.siswa.filter(function(x){return x.id!==id});db.trx=db.trx.filter(function(t){return t.sid!==id});save();render()}
 function vLaporan(){var l=filt(),m=0,k=0;l.forEach(function(t){if(t.jenis==='setor'||t.jenis==='masuk')m+=t.jml;else k+=t.jml});
   return '<div class="card"><h2>Laporan</h2>'+fbar()+'<br><div class="grid"><div class="stat"><span>Total Masuk</span><b>'+rp(m)+'</b></div><div class="stat"><span>Total Keluar</span><b>'+rp(k)+'</b></div><div class="stat"><span>Selisih</span><b>'+rp(m-k)+'</b></div></div><br><button class="p" onclick="csv()">Unduh CSV</button> <button onclick="window.print()">Cetak</button><br><br>'+tbl(l,false)+'</div>'}
