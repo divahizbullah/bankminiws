@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Koperasi Sekolah</title>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);--bg:#f4f6f3;--card:#fff;--tx:#1d2a20;--mut:#6a776d;--pri:#1f7a4d;--pri2:#e3f2ea;--bd:#dfe5df;--red:#c0392b;--amb:#b9770e}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#121a15;--card:#1a251e;--tx:#e8efe9;--mut:#93a396;--pri:#4cc387;--pri2:#21352a;--bd:#2c3b31;--red:#ee7b6e;--amb:#e8b04a}}
+:root[data-theme="dark"]{--bg:#121a15;--card:#1a251e;--tx:#e8efe9;--mut:#93a396;--pri:#4cc387;--pri2:#21352a;--bd:#2c3b31;--red:#ee7b6e;--amb:#e8b04a}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+header{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;padding:14px 18px;background:var(--card);border-bottom:1px solid var(--bd)}
+h1{font-size:18px;margin:0}h1 small{display:block;font-weight:400;color:var(--mut);font-size:12px}
+.badge{font-size:12px;padding:3px 10px;border-radius:99px;background:var(--pri2);color:var(--pri);font-weight:600}
+nav{display:flex;gap:6px;padding:10px 18px;overflow-x:auto}
+nav button{white-space:nowrap}
+main{max-width:1000px;margin:0 auto;padding:6px 18px 40px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:16px;margin-bottom:14px}
+h2{font-size:16px;margin:0 0 12px}
+.grid{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+.grid2{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+.stat{background:var(--pri2);border-radius:10px;padding:12px}.stat span{font-size:12px;color:var(--mut)}.stat b{display:block;font-size:18px}
+label{font-size:12px;color:var(--mut);display:block;margin-bottom:3px}
+input,select,textarea{width:100%;padding:9px 10px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--tx);font:inherit}
+button{font:inherit;padding:8px 14px;border-radius:8px;border:1px solid var(--bd);background:var(--card);color:var(--tx);cursor:pointer}
+button.on,button.p{background:var(--pri);color:#fff;border-color:var(--pri)}
+button.d{color:var(--red);padding:3px 8px;font-size:12px}
+.tw{overflow-x:auto}table{width:100%;border-collapse:collapse;font-size:13.5px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--bd);white-space:nowrap}th{color:var(--mut);font-weight:600;font-size:12px}
+.in{color:var(--pri);font-weight:600}.out{color:var(--red);font-weight:600}.r{text-align:right}
+.msg{padding:9px 12px;border-radius:8px;margin-top:10px;font-size:13px;background:var(--pri2);color:var(--pri)}.msg.e{background:rgba(192,57,43,.14);color:var(--red)}
+.hide{display:none}.mut{color:var(--mut);font-size:13px}
+#lg{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:18px;z-index:20}
+#lg .card{width:100%;max-width:340px;margin:0}
+</style>
+</head>
+<body>
+<header>
+  <h1>Koperasi Sekolah<small>Tabungan &amp; kas siswa</small></h1>
+  <div><span class="badge" id="rb"></span> <button id="lb" onclick="authBtn()"></button></div>
+</header>
+<nav id="nav"></nav>
+<main id="v"></main>
+<div id="lg" class="hide"><div class="card"><h2>Login Admin</h2>
+<label>Username</label><input id="lu" autocomplete="username"><br><br>
+<label>Password</label><input id="lp" type="password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+<div id="le" class="msg e hide"></div><br>
+<button class="p" onclick="doLogin()">Masuk</button> <button onclick="lg.classList.add('hide')">Batal</button>
+<p class="mut">Demo: admin / admin123 &middot; kepsek / kepsek123</p></div></div>
+<script>
+var USERS={admin:{p:'admin123',n:'Admin'},kepsek:{p:'kepsek123',n:'Kepala Sekolah'}};
+var KAT=['Belanja Barang Dagangan','Operasional','Honor / Upah','ATK & Perlengkapan','Sosial / Kegiatan Sekolah','Lainnya'];
+var JN={setor:'Setoran Tabungan',tarik:'Penarikan Tabungan',masuk:'Pemasukan Koperasi',keluar:'Pengeluaran Koperasi'};
+var db={siswa:[],trx:[]},role='tamu',who='',tab='input',msg='',flt={};
+try{var s=localStorage.getItem('kop_db');if(s)db=JSON.parse(s)}catch(e){}
+try{var r=sessionStorage.getItem('kop_role');if(r){var o=JSON.parse(r);role=o.r;who=o.n}}catch(e){}
+function save(){try{localStorage.setItem('kop_db',JSON.stringify(db))}catch(e){}}
+function $(i){return document.getElementById(i)}
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+function rp(n){return 'Rp '+(n||0).toLocaleString('id-ID')}
+function today(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6)}
+function isA(){return role==='admin'}
+function sis(id){return db.siswa.find(function(x){return x.id===id})}
+function saldo(id){return db.trx.reduce(function(a,t){return t.sid===id?a+(t.jenis==='setor'?t.jml:t.jenis==='tarik'?-t.jml:0):a},0)}
+function kelasList(){var k={};db.siswa.forEach(function(s){k[s.kelas]=1});return Object.keys(k).sort()}
+function opts(arr,sel,all){return (all?'<option value="">'+all+'</option>':'')+arr.map(function(x){return '<option'+(x===sel?' selected':'')+'>'+esc(x)+'</option>'}).join('')}
+function authBtn(){if(isA()){role='tamu';who='';try{sessionStorage.removeItem('kop_role')}catch(e){};tab='input';render()}else{lg.classList.remove('hide');$('lu').focus()}}
+function doLogin(){var u=USERS[$('lu').value.trim().toLowerCase()];if(u&&u.p===$('lp').value){role='admin';who=u.n;try{sessionStorage.setItem('kop_role',JSON.stringify({r:role,n:who}))}catch(e){};lg.classList.add('hide');$('lp').value='';tab='dash';render()}else{var e=$('le');e.textContent='Username atau password salah.';e.classList.remove('hide')}}
+function setTab(t){tab=t;msg='';render()}
+function render(){
+  $('rb').textContent=isA()?who:'Tamu (Petugas Siswa)';$('lb').textContent=isA()?'Keluar':'Login Admin';
+  var tabs=isA()?[['dash','Dashboard'],['input','Input'],['riwayat','Riwayat'],['siswa','Data Siswa'],['laporan','Laporan']]:[['input','Input Transaksi'],['riwayat','Riwayat'],['siswa','Saldo Siswa']];
+  $('nav').innerHTML=tabs.map(function(t){return '<button class="'+(tab===t[0]?'on':'')+'" onclick="setTab(\''+t[0]+'\')">'+t[1]+'</button>'}).join('');
+  var f={dash:vDash,input:vInput,riwayat:vRiwayat,siswa:vSiswa,laporan:vLaporan}[tab]||vInput;
+  $('v').innerHTML=f();if(tab==='input')fillSiswa();
+}
+function sums(){var s={tab:0,masuk:0,keluar:0,setor:0,tarik:0};db.trx.forEach(function(t){if(t.jenis==='setor')s.setor+=t.jml;else if(t.jenis==='tarik')s.tarik+=t.jml;else s[t.jenis]+=t.jml});s.tab=s.setor-s.tarik;s.kas=s.tab+s.masuk-s.keluar;return s}
+function vDash(){
+  var s=sums(),ks=kelasList(),kt={};db.trx.forEach(function(t){if(t.jenis==='keluar')kt[t.kat]=(kt[t.kat]||0)+t.jml});
+  return '<div class="card"><h2>Ringkasan</h2><div class="grid"><div class="stat"><span>Tabungan Siswa</span><b>'+rp(s.tab)+'</b></div><div class="stat"><span>Pemasukan Koperasi</span><b>'+rp(s.masuk)+'</b></div><div class="stat"><span>Pengeluaran</span><b>'+rp(s.keluar)+'</b></div><div class="stat"><span>Total Kas</span><b>'+rp(s.kas)+'</b></div><div class="stat"><span>Jumlah Siswa</span><b>'+db.siswa.length+'</b></div></div></div>'+
+  '<div class="card"><h2>Tabungan per Kelas</h2><div class="tw"><table><tr><th>Kelas</th><th class="r">Siswa</th><th class="r">Total Tabungan</th></tr>'+(ks.map(function(k){var l=db.siswa.filter(function(x){return x.kelas===k});return '<tr><td>'+esc(k)+'</td><td class="r">'+l.length+'</td><td class="r">'+rp(l.reduce(function(a,x){return a+saldo(x.id)},0))+'</td></tr>'}).join('')||'<tr><td colspan="3" class="mut">Belum ada data siswa.</td></tr>')+'</table></div></div>'+
+  '<div class="card"><h2>Pengeluaran per Kategori</h2><div class="tw"><table><tr><th>Kategori</th><th class="r">Total</th></tr>'+(Object.keys(kt).map(function(k){return '<tr><td>'+esc(k)+'</td><td class="r out">'+rp(kt[k])+'</td></tr>'}).join('')||'<tr><td colspan="2" class="mut">Belum ada pengeluaran.</td></tr>')+'</table></div></div>';
+}
+function vInput(){
+  var pn=who||localStorage.getItem('kop_pet')||'';
+  return '<div class="card"><h2>Input Transaksi</h2><div class="grid2">'+
+  '<div><label>Tanggal</label><input type="date" id="f_tgl" value="'+today()+'"></div>'+
+  '<div><label>Jenis</label><select id="f_j" onchange="toggleJ()">'+Object.keys(JN).map(function(k){return '<option value="'+k+'">'+JN[k]+'</option>'}).join('')+'</select></div>'+
+  '<div class="sj"><label>Kelas</label><select id="f_k" onchange="fillSiswa()">'+opts(kelasList(),'','Pilih kelas')+'</select></div>'+
+  '<div class="sj"><label>Nama Siswa</label><select id="f_s"></select></div>'+
+  '<div class="kj hide"><label>Kategori</label><select id="f_kat">'+opts(KAT)+'</select></div>'+
+  '<div><label>Jumlah (Rp)</label><input type="number" id="f_jml" min="1" inputmode="numeric"></div>'+
+  '<div><label>Keterangan</label><input id="f_ket" placeholder="mis. tabungan mingguan"></div>'+
+  '<div><label>Petugas Piket</label><input id="f_p" value="'+esc(pn)+'" placeholder="Nama siswa petugas"></div></div><br>'+
+  '<button class="p" onclick="addTrx()">Simpan Transaksi</button><div id="fm">'+(msg||'')+'</div>'+(kelasList().length?'':'<p class="mut">Belum ada data siswa. Minta admin menambahkan nama siswa terlebih dahulu.</p>')+'</div>'+
+  '<div class="card"><h2>Transaksi Terakhir</h2>'+tbl(db.trx.slice().sort(cmp).slice(0,8),false)+'</div>';
+}
+function toggleJ(){var j=$('f_j').value,sj=(j==='setor'||j==='tarik');document.querySelectorAll('.sj').forEach(function(e){e.classList.toggle('hide',!sj)});document.querySelectorAll('.kj').forEach(function(e){e.classList.toggle('hide',j!=='keluar')})}
+function fillSiswa(){var k=$('f_k');if(!k)return;var l=db.siswa.filter(function(x){return x.kelas===k.value}).sort(function(a,b){return a.nama.localeCompare(b.nama)});$('f_s').innerHTML='<option value="">Pilih siswa</option>'+l.map(function(x){return '<option value="'+x.id+'">'+esc(x.nama)+' (saldo '+rp(saldo(x.id))+')</option>'}).join('');toggleJ()}
+function note(m,e){$('fm').innerHTML='<div class="msg'+(e?' e':'')+'">'+m+'</div>'}
+function addTrx(){
+  var j=$('f_j').value,jml=parseInt($('f_jml').value,10),sj=(j==='setor'||j==='tarik'),pet=$('f_p').value.trim(),sid=sj?$('f_s').value:null;
+  if(!$('f_tgl').value)return note('Tanggal wajib diisi.',1);
+  if(sj&&!sid)return note('Pilih kelas dan nama siswa.',1);
+  if(!jml||jml<1)return note('Jumlah harus lebih dari 0.',1);
+  if(!pet)return note('Nama petugas piket wajib diisi.',1);
+  if(j==='tarik'&&jml>saldo(sid))return note('Saldo siswa tidak cukup. Saldo: '+rp(saldo(sid)),1);
+  if((j==='keluar'||j==='masuk')&&!$('f_ket').value.trim())return note('Keterangan wajib diisi untuk transaksi koperasi.',1);
+  db.trx.push({id:uid(),tgl:$('f_tgl').value,jenis:j,sid:sid,jml:jml,ket:$('f_ket').value.trim(),kat:j==='keluar'?$('f_kat').value:'',pet:pet,ts:Date.now()});
+  try{localStorage.setItem('kop_pet',pet)}catch(e){}
+  save();msg='<div class="msg">Transaksi tersimpan: '+JN[j]+' '+rp(jml)+'.</div>';render();
+}
+function cmp(a,b){return a.tgl<b.tgl?1:a.tgl>b.tgl?-1:b.ts-a.ts}
+function tbl(l,del){
+  if(!l.length)return '<p class="mut">Belum ada transaksi.</p>';
+  return '<div class="tw"><table><tr><th>Tanggal</th><th>Jenis</th><th>Siswa</th><th>Kelas</th><th>Kategori / Ket.</th><th class="r">Jumlah</th><th>Petugas</th>'+(del?'<th></th>':'')+'</tr>'+l.map(function(t){var s=sis(t.sid),pl=(t.jenis==='setor'||t.jenis==='masuk');
+  return '<tr><td>'+t.tgl+'</td><td>'+JN[t.jenis]+'</td><td>'+(s?esc(s.nama):'-')+'</td><td>'+(s?esc(s.kelas):'-')+'</td><td>'+esc((t.kat?t.kat+' · ':'')+t.ket)+'</td><td class="r '+(pl?'in':'out')+'">'+(pl?'+':'-')+rp(t.jml)+'</td><td>'+esc(t.pet)+'</td>'+(del?'<td><button class="d" onclick="delTrx(\''+t.id+'\')">Hapus</button></td>':'')+'</tr>'}).join('')+'</table></div>';
+}
+function filt(){return db.trx.filter(function(t){var s=sis(t.sid);return(!flt.k||(s&&s.kelas===flt.k))&&(!flt.j||t.jenis===flt.j)&&(!flt.a||t.tgl>=flt.a)&&(!flt.b||t.tgl<=flt.b)}).sort(cmp)}
+function fbar(){return '<div class="grid2"><div><label>Kelas</label><select onchange="flt.k=this.value;render()">'+opts(kelasList(),flt.k,'Semua')+'</select></div><div><label>Jenis</label><select onchange="flt.j=this.value;render()"><option value="">Semua</option>'+Object.keys(JN).map(function(k){return '<option value="'+k+'"'+(flt.j===k?' selected':'')+'>'+JN[k]+'</option>'}).join('')+'</select></div><div><label>Dari</label><input type="date" value="'+(flt.a||'')+'" onchange="flt.a=this.value;render()"></div><div><label>Sampai</label><input type="date" value="'+(flt.b||'')+'" onchange="flt.b=this.value;render()"></div></div>'}
+function vRiwayat(){var l=filt();return '<div class="card"><h2>Riwayat Transaksi</h2>'+fbar()+'<br>'+tbl(l,isA())+'</div>'}
+function delTrx(id){if(!confirm('Hapus transaksi ini?'))return;db.trx=db.trx.filter(function(t){return t.id!==id});save();render()}
+function vSiswa(){
+  var l=db.siswa.slice().sort(function(a,b){return a.kelas.localeCompare(b.kelas)||a.nama.localeCompare(b.nama)});
+  var form=isA()?'<div class="card"><h2>Tambah Nama Siswa</h2><div class="grid2"><div><label>Kelas</label><input id="n_k" placeholder="mis. 7A"></div><div style="grid-column:span 2"><label>Nama siswa (satu nama per baris, bisa banyak sekaligus)</label><textarea id="n_n" rows="4" placeholder="Budi Santoso&#10;Siti Aminah"></textarea></div></div><br><button class="p" onclick="addSiswa()">Tambahkan</button><div id="fm">'+msg+'</div></div>':'';
+  return form+'<div class="card"><h2>Daftar Siswa &amp; Saldo ('+l.length+')</h2><div class="tw"><table><tr><th>Nama</th><th>Kelas</th><th class="r">Saldo Tabungan</th>'+(isA()?'<th></th>':'')+'</tr>'+(l.map(function(s){return '<tr><td>'+esc(s.nama)+'</td><td>'+esc(s.kelas)+'</td><td class="r">'+rp(saldo(s.id))+'</td>'+(isA()?'<td><button class="d" onclick="delSiswa(\''+s.id+'\')">Hapus</button></td>':'')+'</tr>'}).join('')||'<tr><td colspan="4" class="mut">Belum ada siswa.</td></tr>')+'</table></div></div>';
+}
+function addSiswa(){var k=$('n_k').value.trim().toUpperCase(),n=$('n_n').value.split('\n').map(function(x){return x.trim()}).filter(Boolean);
+  if(!k||!n.length){msg='<div class="msg e">Isi kelas dan minimal satu nama.</div>';return render()}
+  n.forEach(function(x){db.siswa.push({id:uid(),nama:x,kelas:k})});save();msg='<div class="msg">'+n.length+' siswa ditambahkan ke kelas '+esc(k)+'.</div>';render()}
+function delSiswa(id){var s=sis(id);if(!confirm('Hapus '+s.nama+'? Riwayat transaksi siswa ini juga ikut dihapus.'))return;db.siswa=db.siswa.filter(function(x){return x.id!==id});db.trx=db.trx.filter(function(t){return t.sid!==id});save();render()}
+function vLaporan(){var l=filt(),m=0,k=0;l.forEach(function(t){if(t.jenis==='setor'||t.jenis==='masuk')m+=t.jml;else k+=t.jml});
+  return '<div class="card"><h2>Laporan</h2>'+fbar()+'<br><div class="grid"><div class="stat"><span>Total Masuk</span><b>'+rp(m)+'</b></div><div class="stat"><span>Total Keluar</span><b>'+rp(k)+'</b></div><div class="stat"><span>Selisih</span><b>'+rp(m-k)+'</b></div></div><br><button class="p" onclick="csv()">Unduh CSV</button> <button onclick="window.print()">Cetak</button><br><br>'+tbl(l,false)+'</div>'}
+function csv(){var rows=[['Tanggal','Jenis','Siswa','Kelas','Kategori','Keterangan','Jumlah','Petugas']].concat(filt().map(function(t){var s=sis(t.sid);return [t.tgl,JN[t.jenis],s?s.nama:'',s?s.kelas:'',t.kat,t.ket,t.jml,t.pet]}));
+  var c=rows.map(function(r){return r.map(function(x){return '"'+String(x).replace(/"/g,'""')+'"'}).join(',')}).join('\n');
+  var a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\ufeff'+c],{type:'text/csv'}));a.download='laporan-koperasi.csv';a.click()}
+render();
+</script>
+</body>
+</html>
