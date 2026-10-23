@@ -113,7 +113,7 @@ async function loadAll(){
   db.siswa=R[1].map(function(s){return{id:s.id,nama:s.nama,kelas:kn[s.kelas_id]||'Tanpa Kelas'}});
   db.trx=R[2].map(function(t){return{id:t.id,tgl:t.tanggal,jenis:t.jenis,sid:t.siswa_id,jml:Number(t.jumlah),ket:t.keterangan,kat:t.kategori||'',pet:t.petugas,ts:Date.parse(t.dibuat_pada)}});
   db.jual=R[3].map(function(j){return{id:j.id,ts:Date.parse(j.dibuat_pada),tgl:j.tanggal,g:j.grup,lay:j.layanan,jn:j.jenis_transaksi||'',no:j.no_tujuan,nm:j.nama_pelanggan||'',pb:j.pembeli||'lain',sid:j.siswa_id||'',dsk:Number(j.diskon||0),nom:Number(j.nominal),fee:Number(j.biaya_admin),ket:j.keterangan,pet:j.petugas}});
-  try{var ps=await sb.from('pengaturan').select('nilai').eq('kunci','diskon').maybeSingle();db.set=(ps.data&&ps.data.nilai)||{}}catch(e){db.set={}}
+  db.set={};db.adm=null;try{var ps=await sb.from('pengaturan').select('kunci,nilai').in('kunci',['diskon','admin']);(ps.data||[]).forEach(function(r){if(r.kunci==='diskon')db.set=r.nilai||{};else if(r.kunci==='admin')db.adm=r.nilai||null})}catch(e){db.set={};db.adm=null}
   db.imp=R[4].map(function(i){return{ts:Date.parse(i.dibuat_pada),tgl:i.tanggal,kelas:i.kelas_nama,oleh:i.diimport_oleh,jml:i.jumlah,file:i.nama_file||''}});
   snap={kelas:ids(kelasNames(),function(x){return x}),siswa:ids(db.siswa,function(x){return x.id}),trx:ids(db.trx,function(x){return x.id}),jual:ids(db.jual,function(x){return x.id}),imp:ids(db.imp,function(x){return x.ts})};
 }
@@ -234,7 +234,7 @@ function openSvc(g,i){
   '<div id="j_sw2"><label>Nama siswa</label><select id="j_sd" onchange="jtot()"></select></div>'+
   '<div id="j_lw" class="hide"><label>Nama pelanggan (opsional)</label><input id="j_nm"></div>'+
   '<div><label>'+(g==='bayar'?'Nominal Tagihan (Rp)':'Nominal (Rp)')+'</label><input type="number" id="j_nom" min="1" inputmode="numeric" oninput="jtot()"></div>'+
-  '<div><label>Biaya Admin / Keuntungan (Rp)</label><input type="number" id="j_fee" min="0" value="0" inputmode="numeric" oninput="jtot()"></div>'+
+  '<div><label>Biaya Admin / Keuntungan (Rp)</label><input type="number" id="j_fee" min="0" value="'+admFee(g,'siswa')+'" inputmode="numeric" oninput="jtot()"'+(sw&&db.adm?' readonly':'')+'></div>'+
   '<div><label>Diskon Siswa</label><input id="j_dk" readonly value="Rp 0"></div>'+
   '<div><label>Total Diterima dari Pelanggan</label><input id="j_tot" readonly value="Rp 0"></div>'+
   '<div><label>Petugas</label><input id="j_p" value="'+esc(pn)+'"'+(sw?' readonly':'')+'></div></div><br><label>Keterangan (opsional)</label><input id="j_ket" placeholder="mis. tagihan bulan Oktober"><br><br>'+
@@ -242,7 +242,18 @@ function openSvc(g,i){
   klChg('');curSvc=g;jtot();$('j_no').focus();
 }
 var curSvc='';
-function pbChg(){var sw=$('j_pb').value==='siswa';['j_sw','j_sw2'].forEach(function(id){$(id).classList.toggle('hide',!sw)});$('j_lw').classList.toggle('hide',sw);jtot()}
+function admFee(g,pb){var a=db.adm&&db.adm[g];return a?(Number(a[pb==='siswa'?'siswa':'lain'])||0):0}
+function openAdm(){
+  openModal('<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><h2 style="margin:0">Pengaturan Biaya Admin</h2><button onclick="closeModal()" aria-label="Tutup">✕</button></div><p class="mut" style="margin-top:0">Nilai ini terisi otomatis di kolom Biaya Admin / Keuntungan pada formulir, sesuai kategori dan jenis pembeli.</p>'+
+  Object.keys(GN).map(function(g){return '<div class="card" style="margin-bottom:10px"><b>'+GN[g]+'</b><div class="grid2" style="margin-top:8px"><div><label>Pembeli Siswa (Rp)</label><input type="number" min="0" inputmode="numeric" id="a_s_'+g+'" value="'+admFee(g,'siswa')+'"></div><div><label>Pembeli Lain-lain (Rp)</label><input type="number" min="0" inputmode="numeric" id="a_l_'+g+'" value="'+admFee(g,'lain')+'"></div></div></div>'}).join('')+
+  '<div id="am2"></div><button class="p" onclick="saveAdm()">Simpan</button> <button onclick="closeModal()">Batal</button>');
+}
+async function saveAdm(){
+  var v={};for(var g in GN){var a=parseInt($('a_s_'+g).value,10)||0,b=parseInt($('a_l_'+g).value,10)||0;if(a<0||b<0){$('am2').innerHTML='<div class="msg e">Nilai tidak boleh negatif.</div>';return}v[g]={siswa:a,lain:b}}
+  var r=await sb.from('pengaturan').upsert({kunci:'admin',nilai:v});
+  if(r.error){$('am2').innerHTML='<div class="msg e">'+esc(r.error.message)+'</div>';return}
+  db.adm=v;closeModal();toast('Biaya admin disimpan');render()}
+function pbChg(){var sw=$('j_pb').value==='siswa';$('j_fee').value=admFee(curSvc,$('j_pb').value);['j_sw','j_sw2'].forEach(function(id){$(id).classList.toggle('hide',!sw)});$('j_lw').classList.toggle('hide',sw);jtot()}
 function klChg(pick){var k=$('j_kl').value,l=db.siswa.filter(function(x){return x.kelas===k}).sort(function(a,b){return a.nama<b.nama?-1:1});
   $('j_sd').innerHTML='<option value="">- pilih siswa -</option>'+l.map(function(x){return '<option value="'+x.id+'"'+(x.id===pick?' selected':'')+'>'+esc(x.nama)+'</option>'}).join('');jtot()}
 function calcDisk(g,nom,fee){var c=db.set&&db.set[g];if(!c||!c.aktif||!(c.nilai>0))return 0;var d=c.tipe==='rupiah'?c.nilai:Math.round((c.tipe==='persen_admin'?fee:nom)*c.nilai/100);return Math.max(0,Math.min(d,nom+fee))}
@@ -391,7 +402,7 @@ function amsg(m,e,rr){msg='<div class="msg'+(e?' e':'')+'">'+m+'</div>';if(rr)re
 function setSt(x){st=x;msg='';render();if(x==='guru')loadGuru()}
 function esel(id,sel){return '<select id="'+id+'">'+opts(kelasList(),sel,'Pilih kelas')+'</select>'}
 function vAdmin(){
-  return '<div class="card"><h2>Administrasi</h2><div style="display:flex;gap:6px;flex-wrap:wrap"><button class="'+(st==='kelas'?'on':'')+'" onclick="setSt(\'kelas\')">Masukan Kelas</button><button class="'+(st==='siswa'?'on':'')+'" onclick="setSt(\'siswa\')">Masukan Data Siswa</button><button class="'+(st==='diskon'?'on':'')+'" onclick="setSt(\'diskon\')">Diskon Siswa</button>'+(gperan==='admin'?'<button class="'+(st==='guru'?'on':'')+'" onclick="setSt(\'guru\')">Daftarkan Guru</button>':'')+'</div><div id="am">'+msg+'</div></div>'+(st==='kelas'?aKelas():st==='diskon'?aDiskon():st==='guru'&&gperan==='admin'?aGuru():aSiswa());
+  return '<div class="card"><h2>Administrasi</h2><div style="display:flex;gap:6px;flex-wrap:wrap"><button class="'+(st==='kelas'?'on':'')+'" onclick="setSt(\'kelas\')">Masukan Kelas</button><button class="'+(st==='siswa'?'on':'')+'" onclick="setSt(\'siswa\')">Masukan Data Siswa</button><button class="'+(st==='diskon'?'on':'')+'" onclick="setSt(\'diskon\')">Diskon Siswa</button><button onclick="openAdm()">Biaya Admin</button>'+(gperan==='admin'?'<button class="'+(st==='guru'?'on':'')+'" onclick="setSt(\'guru\')">Daftarkan Guru</button>':'')+'</div><div id="am">'+msg+'</div></div>'+(st==='kelas'?aKelas():st==='diskon'?aDiskon():st==='guru'&&gperan==='admin'?aGuru():aSiswa());
 }
 function aKelas(){
   var ks=kelasList();
