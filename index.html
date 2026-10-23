@@ -43,19 +43,21 @@ th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--bd);white-s
 </header>
 <nav id="nav"></nav>
 <main id="v"></main>
-<div id="lg" class="hide"><div class="card"><h2>Login Admin</h2>
-<label>Username</label><input id="lu" autocomplete="username"><br><br>
-<label>Password</label><input id="lp" type="password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+<div id="lg" class="hide"><div class="card"><h2>Masuk ke Koperasi</h2>
+<div style="display:flex;gap:6px;margin-bottom:14px"><button id="tg" class="on" onclick="lt('guru')" style="flex:1">Guru</button><button id="ts" onclick="lt('siswa')" style="flex:1">Siswa</button></div>
+<div id="pg"><label>Username</label><input id="lu" autocomplete="username"><br><br>
+<label>Password</label><input id="lp" type="password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"></div>
+<div id="ps" class="hide"><label>Kelas</label><select id="sk" onchange="fillLogin()"></select><br><br><label>Nama Siswa</label><select id="sn"></select></div>
 <div id="le" class="msg e hide"></div><br>
-<button class="p" onclick="doLogin()">Masuk</button> <button onclick="lg.classList.add('hide')">Batal</button>
-<p class="mut">Demo: admin / admin123 &middot; kepsek / kepsek123</p></div></div>
+<button class="p" onclick="doLogin()" style="width:100%">Masuk</button>
+<p class="mut" id="ld"></p></div></div>
 <script>
 var USERS={admin:{p:'admin123',n:'Admin'},kepsek:{p:'kepsek123',n:'Kepala Sekolah'}};
 var KAT=['Belanja Barang Dagangan','Operasional','Honor / Upah','ATK & Perlengkapan','Sosial / Kegiatan Sekolah','Lainnya'];
 var JN={setor:'Setoran Tabungan',tarik:'Penarikan Tabungan',masuk:'Pemasukan Koperasi',keluar:'Pengeluaran Koperasi'};
-var db={siswa:[],trx:[]},role='tamu',who='',tab='input',msg='',flt={};
+var db={siswa:[],trx:[]},role=null,who='',wk='',lm='guru',tab='input',msg='',flt={};
 try{var s=localStorage.getItem('kop_db');if(s)db=JSON.parse(s)}catch(e){}
-try{var r=sessionStorage.getItem('kop_role');if(r){var o=JSON.parse(r);role=o.r;who=o.n}}catch(e){}
+try{var r=sessionStorage.getItem('kop_role');if(r){var o=JSON.parse(r);role=o.r;who=o.n;wk=o.k||''}}catch(e){}
 function save(){try{localStorage.setItem('kop_db',JSON.stringify(db))}catch(e){}}
 function $(i){return document.getElementById(i)}
 function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
@@ -67,11 +69,17 @@ function sis(id){return db.siswa.find(function(x){return x.id===id})}
 function saldo(id){return db.trx.reduce(function(a,t){return t.sid===id?a+(t.jenis==='setor'?t.jml:t.jenis==='tarik'?-t.jml:0):a},0)}
 function kelasList(){var k={};db.siswa.forEach(function(s){k[s.kelas]=1});return Object.keys(k).sort()}
 function opts(arr,sel,all){return (all?'<option value="">'+all+'</option>':'')+arr.map(function(x){return '<option'+(x===sel?' selected':'')+'>'+esc(x)+'</option>'}).join('')}
-function authBtn(){if(isA()){role='tamu';who='';try{sessionStorage.removeItem('kop_role')}catch(e){};tab='input';render()}else{lg.classList.remove('hide');$('lu').focus()}}
-function doLogin(){var u=USERS[$('lu').value.trim().toLowerCase()];if(u&&u.p===$('lp').value){role='admin';who=u.n;try{sessionStorage.setItem('kop_role',JSON.stringify({r:role,n:who}))}catch(e){};lg.classList.add('hide');$('lp').value='';tab='dash';render()}else{var e=$('le');e.textContent='Username atau password salah.';e.classList.remove('hide')}}
+function authBtn(){role=null;who='';wk='';try{sessionStorage.removeItem('kop_role')}catch(e){};tab='input';msg='';render()}
+function lt(m){lm=m;$('tg').classList.toggle('on',m==='guru');$('ts').classList.toggle('on',m==='siswa');$('pg').classList.toggle('hide',m!=='guru');$('ps').classList.toggle('hide',m!=='siswa');$('le').classList.add('hide');$('ld').textContent=m==='guru'?'Demo: admin / admin123 · kepsek / kepsek123':'Daftar kelas dan nama diambil dari menu Data Siswa yang diisi guru.';if(m==='siswa')fillLogin()}
+function fillLogin(){var ks=kelasList(),k=$('sk'),cur=k.value;k.innerHTML=ks.length?opts(ks,cur):'<option value="">Belum ada data kelas</option>';var l=db.siswa.filter(function(x){return x.kelas===k.value}).sort(function(a,b){return a.nama.localeCompare(b.nama)});$('sn').innerHTML=l.length?l.map(function(x){return '<option value="'+x.id+'">'+esc(x.nama)+'</option>'}).join(''):'<option value="">Belum ada nama siswa</option>'}
+function ok(r,n,k){role=r;who=n;wk=k||'';try{sessionStorage.setItem('kop_role',JSON.stringify({r:r,n:n,k:wk}))}catch(e){};lg.classList.add('hide');$('lp').value='';tab=r==='admin'?'dash':'input';msg='';render()}
+function doLogin(){var e=$('le');e.classList.add('hide');
+  if(lm==='guru'){var u=USERS[$('lu').value.trim().toLowerCase()];if(u&&u.p===$('lp').value)return ok('admin',u.n);e.textContent='Username atau password salah.';e.classList.remove('hide')}
+  else{var s=sis($('sn').value);if(!s){e.textContent='Pilih kelas dan nama siswa terlebih dahulu.';e.classList.remove('hide');return}ok('siswa',s.nama,s.kelas)}}
 function setTab(t){tab=t;msg='';render()}
 function render(){
-  $('rb').textContent=isA()?who:'Tamu (Petugas Siswa)';$('lb').textContent=isA()?'Keluar':'Login Admin';
+  if(!role){lg.classList.remove('hide');$('rb').textContent='Belum masuk';$('lb').classList.add('hide');$('nav').innerHTML='';$('v').innerHTML='';lt(lm);return}
+  $('lb').classList.remove('hide');$('rb').textContent=isA()?'Guru: '+who:'Siswa: '+who+' ('+wk+')';$('lb').textContent='Keluar';
   var tabs=isA()?[['dash','Dashboard'],['input','Input'],['riwayat','Riwayat'],['siswa','Data Siswa'],['laporan','Laporan']]:[['input','Input Transaksi'],['riwayat','Riwayat'],['siswa','Saldo Siswa']];
   $('nav').innerHTML=tabs.map(function(t){return '<button class="'+(tab===t[0]?'on':'')+'" onclick="setTab(\''+t[0]+'\')">'+t[1]+'</button>'}).join('');
   var f={dash:vDash,input:vInput,riwayat:vRiwayat,siswa:vSiswa,laporan:vLaporan}[tab]||vInput;
@@ -94,7 +102,7 @@ function vInput(){
   '<div class="kj hide"><label>Kategori</label><select id="f_kat">'+opts(KAT)+'</select></div>'+
   '<div><label>Jumlah (Rp)</label><input type="number" id="f_jml" min="1" inputmode="numeric"></div>'+
   '<div><label>Keterangan</label><input id="f_ket" placeholder="mis. tabungan mingguan"></div>'+
-  '<div><label>Petugas Piket</label><input id="f_p" value="'+esc(pn)+'" placeholder="Nama siswa petugas"></div></div><br>'+
+  '<div><label>Petugas Piket</label><input id="f_p" value="'+esc(role==='siswa'?who+' ('+wk+')':pn)+'"'+(role==='siswa'?' readonly':'')+' placeholder="Nama petugas"></div></div><br>'+
   '<button class="p" onclick="addTrx()">Simpan Transaksi</button><div id="fm">'+(msg||'')+'</div>'+(kelasList().length?'':'<p class="mut">Belum ada data siswa. Minta admin menambahkan nama siswa terlebih dahulu.</p>')+'</div>'+
   '<div class="card"><h2>Transaksi Terakhir</h2>'+tbl(db.trx.slice().sort(cmp).slice(0,8),false)+'</div>';
 }
