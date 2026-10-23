@@ -104,11 +104,13 @@ function ids(a,f){var o={};a.forEach(function(x){o[f(x)]=1});return o}
 function kelasNames(){var o={};db.kelas.forEach(function(x){o[x]=1});db.siswa.forEach(function(s){o[s.kelas]=1});return Object.keys(o)}
 function save(){pq=pq.then(pushDiff)}
 async function fetchAll(t,ord){var out=[],f=0,n=1000;for(;;){var r=await sb.from(t).select('*').order(ord).order('id').range(f,f+n-1);if(r.error)throw r.error;out=out.concat(r.data);if(r.data.length<n)break;f+=n}return out}
+async function safeAll(t,ord){try{return await fetchAll(t,ord)}catch(e){console.warn('Gagal memuat tabel '+t,e);window._loadErr=(window._loadErr?window._loadErr+'; ':'')+t+': '+(e.message||e);return[]}}
 async function loadAll(){
-  var R=await Promise.all([fetchAll('kelas','nama'),fetchAll('siswa','dibuat_pada'),fetchAll('transaksi','dibuat_pada'),fetchAll('penjualan','dibuat_pada'),fetchAll('import_siswa','dibuat_pada')]);
+  window._loadErr='';
+  var R=await Promise.all([safeAll('kelas','nama'),safeAll('siswa','dibuat_pada'),safeAll('transaksi','dibuat_pada'),safeAll('penjualan','dibuat_pada'),safeAll('import_siswa','dibuat_pada')]);
   var kn={};kid={};R[0].forEach(function(k){kn[k.id]=k.nama;kid[k.nama]=k.id});
   db.kelas=R[0].map(function(k){return k.nama});
-  db.siswa=R[1].map(function(s){return{id:s.id,nama:s.nama,kelas:kn[s.kelas_id]}});
+  db.siswa=R[1].map(function(s){return{id:s.id,nama:s.nama,kelas:kn[s.kelas_id]||'Tanpa Kelas'}});
   db.trx=R[2].map(function(t){return{id:t.id,tgl:t.tanggal,jenis:t.jenis,sid:t.siswa_id,jml:Number(t.jumlah),ket:t.keterangan,kat:t.kategori||'',pet:t.petugas,ts:Date.parse(t.dibuat_pada)}});
   db.jual=R[3].map(function(j){return{id:j.id,ts:Date.parse(j.dibuat_pada),tgl:j.tanggal,g:j.grup,lay:j.layanan,jn:j.jenis_transaksi||'',no:j.no_tujuan,nm:j.nama_pelanggan||'',pb:j.pembeli||'lain',sid:j.siswa_id||'',dsk:Number(j.diskon||0),nom:Number(j.nominal),fee:Number(j.biaya_admin),ket:j.keterangan,pet:j.petugas}});
   try{var ps=await sb.from('pengaturan').select('nilai').eq('kunci','diskon').maybeSingle();db.set=(ps.data&&ps.data.nilai)||{}}catch(e){db.set={}}
@@ -119,6 +121,7 @@ async function ins(t,rows){if(!rows.length)return;var r=await sb.from(t).insert(
 async function del(t,c,v){if(!v.length)return;var r=await sb.from(t).delete().in(c,v);if(r.error)throw r.error}
 async function pushDiff(){
   if(!sb)return;
+  if(window._loadErr){toast('Simpan dibatalkan, data belum termuat lengkap: '+window._loadErr);return}
   try{
     var cur=kelasNames(),nk=cur.filter(function(k){return !snap.kelas[k]}),dk=Object.keys(snap.kelas).filter(function(k){return cur.indexOf(k)<0});
     var ns=db.siswa.filter(function(x){return !snap.siswa[x.id]}),nt=db.trx.filter(function(x){return !snap.trx[x.id]}),nj=db.jual.filter(function(x){return !snap.jual[x.id]}),ni=db.imp.filter(function(x){return !snap.imp[x.ts]});
@@ -163,7 +166,7 @@ async function loginGuru(){
   ok('admin',p.nama)}
 async function refresh(){if(!sb)return;await pq;try{await loadAll();render();toast('Data diperbarui')}catch(e){toast('Gagal memuat: '+(e.message||e))}}
 async function boot(){
-  if(sb){try{await loadAll();var g=await sb.auth.getSession(),u=g.data.session&&g.data.session.user;if(u){var p=await guruProfil(u.id);if(p){role='admin';who=p.nama;gperan=p.peran||'';gemail=u.email||''}}}catch(e){console.error(e)}}
+  if(sb){try{await loadAll();if(window._loadErr)toast('Sebagian data gagal dimuat: '+window._loadErr);var g=await sb.auth.getSession(),u=g.data.session&&g.data.session.user;if(u){var p=await guruProfil(u.id);if(p){role='admin';who=p.nama;gperan=p.peran||'';gemail=u.email||''}}}catch(e){console.error(e)}}
   render()}
 
 function $(i){return document.getElementById(i)}
@@ -177,7 +180,7 @@ function saldo(id){return db.trx.reduce(function(a,t){return t.sid===id?a+(t.jen
 function kelasList(){var k={};db.kelas.forEach(function(x){k[x]=1});db.siswa.forEach(function(s){k[s.kelas]=1});return Object.keys(k).sort()}
 function opts(arr,sel,all){return (all?'<option value="">'+all+'</option>':'')+arr.map(function(x){return '<option'+(x===sel?' selected':'')+'>'+esc(x)+'</option>'}).join('')}
 function authBtn(){if(sb&&role==='admin')sb.auth.signOut();role=null;gperan='';gemail='';gl=[];who='';wk='';try{sessionStorage.removeItem('kop_role')}catch(e){};tab='dash';msg='';render()}
-function lt(m){lm=m;$('tg').classList.toggle('on',m==='guru');$('ts').classList.toggle('on',m==='siswa');$('pg').classList.toggle('hide',m!=='guru');$('ps').classList.toggle('hide',m!=='siswa');$('le').classList.add('hide');$('ld').textContent=m==='guru'?'Login guru dengan email atau username (nama guru).':'Daftar kelas dan nama diambil dari menu Administrasi yang diisi guru.';if(!sb)$('ld').textContent='Supabase belum dikonfigurasi: isi SUPABASE_URL dan SUPABASE_KEY di index.html.';if(m==='siswa')fillLogin()}
+function lt(m){lm=m;$('tg').classList.toggle('on',m==='guru');$('ts').classList.toggle('on',m==='siswa');$('pg').classList.toggle('hide',m!=='guru');$('ps').classList.toggle('hide',m!=='siswa');$('le').classList.add('hide');$('ld').textContent=m==='guru'?'Login guru dengan email atau username (nama guru).':'Daftar kelas dan nama diambil dari menu Administrasi yang diisi guru.';if(!sb)$('ld').textContent='Supabase belum dikonfigurasi: isi SUPABASE_URL dan SUPABASE_KEY di index.html.';if(m==='siswa'){fillLogin();if(sb&&!db.siswa.length&&!window._ld){window._ld=1;$('ld').textContent='Memuat data siswa...';loadAll().then(function(){fillLogin();if(!db.siswa.length)$('ld').textContent='Data siswa kosong.'+(window._loadErr?' Error: '+window._loadErr:' Minta guru mengisi data siswa.');else $('ld').textContent='Daftar kelas dan nama diambil dari menu Administrasi yang diisi guru.'}).catch(function(e){$('ld').textContent='Gagal memuat: '+(e.message||e)}).then(function(){window._ld=0})}}}
 function fillLogin(){var ks=kelasList(),k=$('sk'),cur=k.value;k.innerHTML=ks.length?opts(ks,cur):'<option value="">Belum ada data kelas</option>';var l=db.siswa.filter(function(x){return x.kelas===k.value}).sort(function(a,b){return a.nama.localeCompare(b.nama)});$('sn').innerHTML=l.length?l.map(function(x){return '<option value="'+x.id+'">'+esc(x.nama)+'</option>'}).join(''):'<option value="">Belum ada nama siswa</option>'}
 function ok(r,n,k){role=r;who=n;wk=k||'';try{sessionStorage.setItem('kop_role',JSON.stringify({r:r,n:n,k:wk}))}catch(e){};lg.classList.add('hide');$('lp').value='';tab='dash';msg='';render()}
 function doLogin(){var e=$('le');e.classList.add('hide');
