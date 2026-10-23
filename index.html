@@ -233,8 +233,8 @@ function openSvc(g,i){
   '<div id="j_sw"><label>Kelas</label><select id="j_kl" onchange="klChg()"><option value="">- pilih kelas -</option>'+kelasList().map(function(k){return '<option>'+esc(k)+'</option>'}).join('')+'</select></div>'+
   '<div id="j_sw2"><label>Nama siswa</label><select id="j_sd" onchange="jtot()"></select></div>'+
   '<div id="j_lw" class="hide"><label>Nama pelanggan (opsional)</label><input id="j_nm"></div>'+
-  '<div><label>'+(g==='bayar'?'Nominal Tagihan (Rp)':'Nominal (Rp)')+'</label><input type="number" id="j_nom" min="1" inputmode="numeric" oninput="jtot()"></div>'+
-  '<div><label>Biaya Admin / Keuntungan (Rp)</label><input type="number" id="j_fee" min="0" value="'+admFee(g,'siswa')+'" inputmode="numeric" oninput="jtot()"'+(sw&&db.adm?' readonly':'')+'></div>'+
+  '<div><label>'+(g==='bayar'?'Nominal Tagihan (Rp)':'Nominal (Rp)')+'</label><input type="text" id="j_nom" inputmode="numeric" autocomplete="off" placeholder="0" oninput="fmtIn(this);jtot()"></div>'+
+  '<div><label>Biaya Admin / Keuntungan (Rp)</label><input type="text" id="j_fee" value="'+fmtN(admFee(g,'siswa'))+'" inputmode="numeric" autocomplete="off" oninput="fmtIn(this);jtot()"'+(sw&&db.adm?' readonly':'')+'></div>'+
   '<div><label>Diskon Siswa</label><input id="j_dk" readonly value="Rp 0"></div>'+
   '<div><label>Total Diterima dari Pelanggan</label><input id="j_tot" readonly value="Rp 0"></div>'+
   '<div><label>Petugas</label><input id="j_p" value="'+esc(pn)+'"'+(sw?' readonly':'')+'></div></div><br><label>Keterangan (opsional)</label><input id="j_ket" placeholder="mis. tagihan bulan Oktober"><br><br>'+
@@ -242,25 +242,28 @@ function openSvc(g,i){
   klChg('');curSvc=g;jtot();$('j_no').focus();
 }
 var curSvc='';
+function fmtN(n){return String(Math.max(0,parseInt(n,10)||0)).replace(/\B(?=(\d{3})+(?!\d))/g,'.')}
+function numv(id){return parseInt(String($(id).value||'').replace(/\D/g,''),10)||0}
+function fmtIn(el){var v=el.value,pos=el.selectionStart==null?v.length:el.selectionStart,d=v.slice(0,pos).replace(/\D/g,'').length,n=v.replace(/\D/g,'').replace(/^0+(?=\d)/,''),f=n?n.replace(/\B(?=(\d{3})+(?!\d))/g,'.'):'',i=0,c=0;el.value=f;if(d>0){for(;i<f.length&&c<d;i++){if(/\d/.test(f.charAt(i)))c++}}try{el.setSelectionRange(i,i)}catch(e){}}
 function admFee(g,pb){var a=db.adm&&db.adm[g];return a?(Number(a[pb==='siswa'?'siswa':'lain'])||0):0}
 function openAdm(){
   openModal('<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><h2 style="margin:0">Pengaturan Biaya Admin</h2><button onclick="closeModal()" aria-label="Tutup">✕</button></div><p class="mut" style="margin-top:0">Nilai ini terisi otomatis di kolom Biaya Admin / Keuntungan pada formulir, sesuai kategori dan jenis pembeli.</p>'+
-  Object.keys(GN).map(function(g){return '<div class="card" style="margin-bottom:10px"><b>'+GN[g]+'</b><div class="grid2" style="margin-top:8px"><div><label>Pembeli Siswa (Rp)</label><input type="number" min="0" inputmode="numeric" id="a_s_'+g+'" value="'+admFee(g,'siswa')+'"></div><div><label>Pembeli Lain-lain (Rp)</label><input type="number" min="0" inputmode="numeric" id="a_l_'+g+'" value="'+admFee(g,'lain')+'"></div></div></div>'}).join('')+
+  Object.keys(GN).map(function(g){return '<div class="card" style="margin-bottom:10px"><b>'+GN[g]+'</b><div class="grid2" style="margin-top:8px"><div><label>Pembeli Siswa (Rp)</label><input type="text" inputmode="numeric" autocomplete="off" oninput="fmtIn(this)" id="a_s_'+g+'" value="'+fmtN(admFee(g,'siswa'))+'"></div><div><label>Pembeli Lain-lain (Rp)</label><input type="text" inputmode="numeric" autocomplete="off" oninput="fmtIn(this)" id="a_l_'+g+'" value="'+fmtN(admFee(g,'lain'))+'"></div></div></div>'}).join('')+
   '<div id="am2"></div><button class="p" onclick="saveAdm()">Simpan</button> <button onclick="closeModal()">Batal</button>');
 }
 async function saveAdm(){
-  var v={};for(var g in GN){var a=parseInt($('a_s_'+g).value,10)||0,b=parseInt($('a_l_'+g).value,10)||0;if(a<0||b<0){$('am2').innerHTML='<div class="msg e">Nilai tidak boleh negatif.</div>';return}v[g]={siswa:a,lain:b}}
+  var v={};for(var g in GN){var a=numv('a_s_'+g),b=numv('a_l_'+g);if(a<0||b<0){$('am2').innerHTML='<div class="msg e">Nilai tidak boleh negatif.</div>';return}v[g]={siswa:a,lain:b}}
   var r=await sb.from('pengaturan').upsert({kunci:'admin',nilai:v});
   if(r.error){$('am2').innerHTML='<div class="msg e">'+esc(r.error.message)+'</div>';return}
   db.adm=v;closeModal();toast('Biaya admin disimpan');render()}
-function pbChg(){var sw=$('j_pb').value==='siswa';$('j_fee').value=admFee(curSvc,$('j_pb').value);['j_sw','j_sw2'].forEach(function(id){$(id).classList.toggle('hide',!sw)});$('j_lw').classList.toggle('hide',sw);jtot()}
+function pbChg(){var sw=$('j_pb').value==='siswa';$('j_fee').value=fmtN(admFee(curSvc,$('j_pb').value));['j_sw','j_sw2'].forEach(function(id){$(id).classList.toggle('hide',!sw)});$('j_lw').classList.toggle('hide',sw);jtot()}
 function klChg(pick){var k=$('j_kl').value,l=db.siswa.filter(function(x){return x.kelas===k}).sort(function(a,b){return a.nama<b.nama?-1:1});
   $('j_sd').innerHTML='<option value="">- pilih siswa -</option>'+l.map(function(x){return '<option value="'+x.id+'"'+(x.id===pick?' selected':'')+'>'+esc(x.nama)+'</option>'}).join('');jtot()}
 function calcDisk(g,nom,fee){var c=db.set&&db.set[g];if(!c||!c.aktif||!(c.nilai>0))return 0;var d=c.tipe==='rupiah'?c.nilai:Math.round((c.tipe==='persen_admin'?fee:nom)*c.nilai/100);return Math.max(0,Math.min(d,nom+fee))}
-function diskNow(){if(!$('j_pb')||$('j_pb').value!=='siswa'||!$('j_sd').value)return 0;return calcDisk(curSvc,parseInt($('j_nom').value,10)||0,parseInt($('j_fee').value,10)||0)}
-function jtot(){var a=parseInt($('j_nom').value,10)||0,b=parseInt($('j_fee').value,10)||0,d=diskNow();$('j_dk').value=d?'-'+rp(d):'Rp 0';$('j_tot').value=rp(a+b-d)}
+function diskNow(){if(!$('j_pb')||$('j_pb').value!=='siswa'||!$('j_sd').value)return 0;return calcDisk(curSvc,numv('j_nom'),numv('j_fee'))}
+function jtot(){var a=numv('j_nom'),b=numv('j_fee'),d=diskNow();$('j_dk').value=d?'-'+rp(d):'Rp 0';$('j_tot').value=rp(a+b-d)}
 function saveSvc(g,i){
-  var n=SV[g].l[i][0],no=$('j_no').value.trim(),nom=parseInt($('j_nom').value,10),fee=parseInt($('j_fee').value,10)||0,pet=$('j_p').value.trim();
+  var n=SV[g].l[i][0],no=$('j_no').value.trim(),nom=numv('j_nom'),fee=numv('j_fee'),pet=$('j_p').value.trim();
   if(!$('j_tgl').value)return note('Tanggal wajib diisi.',1);
   if(!no)return note('Nomor tujuan / ID pelanggan wajib diisi.',1);
   if(!nom||nom<1)return note('Nominal harus lebih dari 0.',1);
@@ -365,7 +368,7 @@ function formTrx(j){
   '<div class="sj"><label>Kelas</label><select id="f_k" onchange="fillSiswa()">'+opts(kelasList(),lk,'Pilih kelas')+'</select></div>'+
   '<div class="sj"><label>Nama Siswa</label><select id="f_s"></select></div>'+
   '<div class="kj hide"><label>Kategori</label><select id="f_kat">'+opts(KAT)+'</select></div>'+
-  '<div><label>Jumlah (Rp)</label><input type="number" id="f_jml" min="1" inputmode="numeric"></div>'+
+  '<div><label>Jumlah (Rp)</label><input type="text" id="f_jml" inputmode="numeric" autocomplete="off" placeholder="0" oninput="fmtIn(this)"></div>'+
   '<div><label>Keterangan</label><input id="f_ket" placeholder="mis. tabungan mingguan"></div>'+
   '<div><label>Petugas Piket</label><input id="f_p" value="'+esc(sw?who+' ('+wk+')':pn)+'"'+(sw?' readonly':'')+' placeholder="Nama petugas"></div></div><br>'+
   '<button class="p" onclick="addTrx()">Simpan Transaksi</button> <button onclick="closeModal()">Batal</button><div id="fm"></div>';
@@ -374,7 +377,7 @@ function toggleJ(){var j=$('f_j').value,sj=(j==='setor'||j==='tarik');document.q
 function fillSiswa(){var k=$('f_k');if(!k)return;var l=db.siswa.filter(function(x){return x.kelas===k.value}).sort(function(a,b){return a.nama.localeCompare(b.nama)});$('f_s').innerHTML='<option value="">Pilih siswa</option>'+l.map(function(x){return '<option value="'+x.id+'">'+esc(x.nama)+' (saldo '+rp(saldo(x.id))+')</option>'}).join('');toggleJ()}
 function note(m,e){$('fm').innerHTML='<div class="msg'+(e?' e':'')+'">'+m+'</div>'}
 function addTrx(){
-  var j=$('f_j').value,jml=parseInt($('f_jml').value,10),sj=(j==='setor'||j==='tarik'),pet=$('f_p').value.trim(),sid=sj?$('f_s').value:null;
+  var j=$('f_j').value,jml=numv('f_jml'),sj=(j==='setor'||j==='tarik'),pet=$('f_p').value.trim(),sid=sj?$('f_s').value:null;
   if(!$('f_tgl').value)return note('Tanggal wajib diisi.',1);
   if(sj&&!sid)return note('Pilih kelas dan nama siswa.',1);
   if(!jml||jml<1)return note('Jumlah harus lebih dari 0.',1);
