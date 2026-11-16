@@ -274,7 +274,7 @@ function vDash(){
   var kls=kelasList().map(function(k){return [k,db.siswa.filter(function(x){return x.kelas===k}).reduce(function(a,x){return a+Math.max(saldo(x.id),0)},0)]});
   var h='<div class="hero"><div><h2>Halo, '+esc(who)+' \ud83d\udc4b</h2><p>'+(A?'Ringkasan keuangan Bank Mini SMK Walisongo.':'Catat setoran ke rekening BNI dan pembukaan rekening baru.')+'</p></div><div class="acts"><button class="big" onclick="openTrx(\'setor\')">\uff0b Setor Uang</button><button class="big alt" onclick="openRek(\'baru\')">Buka Rekening Baru</button><button class="big alt" onclick="openTrx(\'keluar\')">Pengeluaran</button></div></div>';
   h+='<div class="sg">'+sc('\ud83d\udce5','Setoran Hari Ini',rp(hs))+sc('🏦','Rekening Baru Hari Ini',rekHari())+sc('\ud83e\uddfe','Transaksi Hari Ini',hn)+sc('🛒','Penjualan Hari Ini',rp(jh))+'</div>';
-  if(A)h+='<div class="sg" style="margin-top:12px">'+sc('🏦','Rekening Baru Bulan Ini',rekBulan())+sc('\ud83d\udcc8','Pemasukan Koperasi',rp(s.masuk))+sc('\ud83d\udcc9','Pengeluaran',rp(s.keluar))+sc('💰','Kas Koperasi',rp(s.kas))+sc('🏦','Saldo Kas Rekening',rp(kasSaldo().rek))+sc('💵','Saldo Kas Cash',rp(kasSaldo().cash))+sc('📲','Saldo Kas Aplikasi',rp(kasSaldo().app))+sc('🎓','Siswa Berekening',db.rek.filter(function(r){return r.st==='terbit'}).length+' / '+db.siswa.length)+'</div>';
+  if(A)h+='<div class="sg" style="margin-top:12px">'+sc('🏦','Rekening Baru Bulan Ini',rekBulan())+sc('\ud83d\udcc8','Pemasukan Koperasi',rp(s.masuk))+sc('\ud83d\udcc9','Pengeluaran',rp(s.keluar))+sc('💰','Kas Koperasi',rp(s.kas))+sc('🏦','Saldo Kas Rekening',rp(kasSaldo().rek))+sc('💵','Saldo Kas Cash',rp(kasSaldo().cash))+sc('🎓','Siswa Berekening',db.rek.filter(function(r){return r.st==='terbit'}).length+' / '+db.siswa.length)+'</div>';
   if(A)h+='<div class="cols" style="margin-top:14px"><div class="card"><h2>Rekening Baru per Kelas</h2>'+rkBars()+'</div><div class="card"><h2>Pengeluaran per Kategori</h2>'+bars(Object.keys(kt).map(function(k){return [k,kt[k]]}),'out')+'</div></div>';
   return h+'<div class="card" style="margin-top:14px"><h2>Transaksi Terakhir</h2>'+tbl(db.trx.slice().sort(cmp).slice(0,8),false)+'</div>';
 }
@@ -349,7 +349,7 @@ function saveSvc(g,i){
   if(pb==='siswa'){sid=$('j_sd').value;if(!sid)return note('Pilih kelas dan nama siswa.',1);var sx=db.siswa.filter(function(z){return z.id===sid})[0];nm=sx?sx.nama+' ('+sx.kelas+')':''}else nm=$('j_nm').value.trim();
   var dsk=pb==='siswa'?calcDisk(g,nom,fee):0;
   db.jual.push({id:uid(),ts:Date.now(),tgl:$('j_tgl').value,g:g,lay:n,jn:g==='digital'?$('j_jn').value:'',no:no,nm:nm,pb:pb,sid:sid,dsk:dsk,nom:nom,fee:fee,mod:numv('j_mod'),brg:selBrg()?selBrg().nama:'',prov:selBrg()?selBrg().prov:'',ket:$('j_ket').value.trim(),pet:pet});
-  save();closeModal();msg='';toast(n+' '+rp(nom+fee-dsk)+(dsk?' (diskon '+rp(dsk)+')':'')+' tersimpan - masuk kas cash, kas aplikasi -'+rp(numv('j_mod')));render();
+  save();closeModal();msg='';toast(n+' '+rp(nom+fee-dsk)+(dsk?' (diskon '+rp(dsk)+')':'')+' tersimpan - kas cash +'+rp(nom+fee-dsk)+', kas rekening -'+rp(numv('j_mod')));render();
 }
 function delJual(id){if(!confirm('Hapus transaksi ini?'))return;db.jual=db.jual.filter(function(x){return x.id!==id});save();render()}
 function jfilt(){return db.jual.filter(function(x){return(!jf.a||x.tgl>=jf.a)&&(!jf.b||x.tgl<=jf.b)&&(!jf.g||x.g===jf.g)&&(!jf.p||x.pet===jf.p)}).sort(function(a,b){return a.tgl<b.tgl?1:a.tgl>b.tgl?-1:b.ts-a.ts})}
@@ -722,17 +722,17 @@ function askPg(){
 function okPg(){var v=$('pgs').value;if(!v){$('pgm').innerHTML='<div class="msg e" style="margin-top:10px">Pilih nama petugas terlebih dahulu.</div>';return}
   pgs=v;try{sessionStorage.setItem('kop_pgs',v)}catch(e){};closeModal();render();toast('Petugas: '+v)}
 /* ===== Kas (rekening & cash) ===== */
-var KN={rekening:'Kas Rekening',cash:'Kas Cash',aplikasi:'Kas Aplikasi'};
-function kasSaldo(){var o={rek:0,cash:0,app:0},m={rekening:'rek',cash:'cash',aplikasi:'app'};
+var KN={rekening:'Kas Rekening',cash:'Kas Cash'};
+function kasSaldo(){var o={rek:0,cash:0},m={rekening:'rek',cash:'cash',aplikasi:'rek'};
   kasRows().forEach(function(e){o[m[e.kas]]+=e.jenis==='masuk'?e.jml:-e.jml});
   var ad=0,n=0;db.rek.forEach(function(x){if(x.jns==='baru'&&x.adm>0){ad+=x.adm;n++}});o.adm=ad;o.n=n;return o}
 function kasRows(){
-  var a=db.kas.map(function(e){return{id:e.id,tgl:e.tgl,ts:e.ts,kas:e.kas,jenis:e.jenis,jml:e.jml,ket:e.ket,pet:e.pet}});
+  var a=db.kas.map(function(e){return{id:e.id,tgl:e.tgl,ts:e.ts,kas:e.kas==='aplikasi'?'rekening':e.kas,jenis:e.jenis,jml:e.jml,ket:e.ket,pet:e.pet}});
   db.rek.forEach(function(r){if(r.jns==='baru'&&r.adm>0){var z=sis(r.sid),k='Biaya admin rekening baru'+(z?' - '+z.nama+' ('+z.kelas+')':'');
     a.push({tgl:r.tgl,ts:r.ts,kas:'rekening',jenis:'keluar',jml:r.adm,ket:k,pet:r.pet,auto:1});a.push({tgl:r.tgl,ts:r.ts,kas:'cash',jenis:'masuk',jml:r.adm,ket:k,pet:r.pet,auto:1})}});
   db.jual.forEach(function(x){if(x.mod==null)return;var l=x.lay+(x.prov?' '+x.prov:'')+(x.brg?' '+x.brg:'')+' - '+pel(x);
     if(jTot(x)>0)a.push({tgl:x.tgl,ts:x.ts,kas:'cash',jenis:'masuk',jml:jTot(x),ket:'Pembayaran customer: '+l,pet:x.pet,auto:1});
-    if(x.mod>0)a.push({tgl:x.tgl,ts:x.ts,kas:'aplikasi',jenis:'keluar',jml:x.mod,ket:'Modal aplikasi: '+l,pet:x.pet,auto:1})});
+    if(x.mod>0)a.push({tgl:x.tgl,ts:x.ts,kas:'rekening',jenis:'keluar',jml:x.mod,ket:'Modal aplikasi (bayar via BNI): '+l,pet:x.pet,auto:1})});
   db.trx.forEach(function(t){if(t.jenis!=='setor')return;var z=sis(t.sid),n=z?' - '+z.nama+' ('+z.kelas+')':'';
     if(t.adm>0)a.push({tgl:t.tgl,ts:t.ts,kas:'cash',jenis:'masuk',jml:t.adm,ket:'Biaya admin setoran'+n,pet:t.pet,auto:1});
     if(t.bank>0)a.push({tgl:t.tgl,ts:t.ts,kas:'rekening',jenis:'keluar',jml:t.bank,ket:'Biaya bank setoran'+n,pet:t.pet,auto:1})});
@@ -742,14 +742,14 @@ function vKasPtg(){
   var s=kasSaldo(),t=kasTgl||today(),l=kasRows().filter(function(x){return x.kas==='cash'&&x.jenis==='masuk'&&x.tgl===t}),tot=0,au=0;
   l.forEach(function(x){tot+=x.jml;if(x.auto)au+=x.jml});
   return '<div class="hero"><div><h2>Kas Bank Mini</h2><p>Informasi saldo kas dan pendapatan harian yang masuk ke kas cash.</p></div></div>'+
-  '<div class="sg">'+sc('🏦','Saldo Kas Rekening',rp(s.rek))+sc('💵','Saldo Kas Cash',rp(s.cash))+sc('📲','Saldo Kas Aplikasi',rp(s.app))+sc('📥','Masuk Kas Cash ('+esc(t)+')',rp(tot))+sc('🧾','Dari Admin Rekening Baru',rp(au))+'</div>'+
+  '<div class="sg">'+sc('🏦','Saldo Kas Rekening',rp(s.rek))+sc('💵','Saldo Kas Cash',rp(s.cash))+sc('📥','Masuk Kas Cash ('+esc(t)+')',rp(tot))+sc('🧾','Dari Admin Rekening Baru',rp(au))+'</div>'+
   '<div class="card" style="margin-top:14px"><h2>Pendapatan Harian Masuk Kas Cash</h2><div class="grid2"><div><label>Tanggal</label><input type="date" value="'+t+'" onchange="kasTgl=this.value;render()"></div></div><br>'+
   (l.length?'<div class="tw"><table><tr><th>Tanggal</th><th>Keterangan</th><th class="r">Jumlah</th><th>Petugas</th></tr>'+l.map(function(x){return '<tr><td>'+esc(x.tgl)+'</td><td>'+esc(x.ket)+'</td><td class="r in">+'+rp(x.jml)+'</td><td>'+esc(x.pet||'')+'</td></tr>'}).join('')+'<tr><th colspan="2">Total</th><th class="r">'+rp(tot)+'</th><th></th></tr></table></div>':'<p class="mut">Belum ada pemasukan ke kas cash pada tanggal ini.</p>')+'</div>'}
 function vKas(){
   if(!isA())return vKasPtg();
   var s=kasSaldo(),l=kasRows(),lim=200;
-  return '<div class="hero"><div><h2>Kas Bank Mini</h2><p>Kas Aplikasi berkurang oleh modal tiap penjualan; pembayaran customer masuk Kas Cash. Isi saldo awal Kas Aplikasi lewat Tambah Saldo.</p></div><div class="acts"><button class="big" onclick="openKas(\'tambah\')">＋ Tambah Saldo</button><button class="big alt" onclick="openKas(\'kurang\')">− Kurangi Saldo</button><button class="big alt" onclick="openKas(\'pindah\')">⇄ Pindah Kas</button></div></div>'+
-  '<div class="sg">'+sc('🏦','Saldo Kas Rekening',rp(s.rek))+sc('💵','Saldo Kas Cash',rp(s.cash))+sc('📲','Saldo Kas Aplikasi',rp(s.app))+sc('💰','Total Kas',rp(s.rek+s.cash+s.app))+sc('🧾','Total Admin Diterima Cash',rp(s.adm)+' ('+s.n+' rek.)')+'</div>'+
+  return '<div class="hero"><div><h2>Kas Bank Mini</h2><p>Modal tiap penjualan (dibayar lewat aplikasi BNI) memotong Kas Rekening; pembayaran customer masuk Kas Cash.</p></div><div class="acts"><button class="big" onclick="openKas(\'tambah\')">＋ Tambah Saldo</button><button class="big alt" onclick="openKas(\'kurang\')">− Kurangi Saldo</button><button class="big alt" onclick="openKas(\'pindah\')">⇄ Pindah Kas</button></div></div>'+
+  '<div class="sg">'+sc('🏦','Saldo Kas Rekening',rp(s.rek))+sc('💵','Saldo Kas Cash',rp(s.cash))+sc('💰','Total Kas',rp(s.rek+s.cash))+sc('🧾','Total Admin Diterima Cash',rp(s.adm)+' ('+s.n+' rek.)')+'</div>'+
   '<div class="card" style="margin-top:14px"><h2>Biaya Admin Rekening Baru</h2><p class="mut" style="margin-top:-6px">Nominal ini dipindahkan dari Saldo Kas Rekening ke Saldo Kas Cash setiap petugas mencatat rekening baru. Rekening yang sudah tercatat sebelumnya tidak berubah (memakai nominal saat dibuat).</p><div class="grid2"><div><label>Biaya admin per rekening baru (Rp)</label><input id="kas_adm" inputmode="numeric" autocomplete="off" oninput="fmtIn(this)" value="'+fmtN(db.admrek)+'"></div></div><br><button class="p" onclick="saveAdmRek()">Simpan Biaya Admin</button><div id="am">'+msg+'</div></div>'+
   '<div class="card"><h2>Riwayat Kas ('+l.length+')</h2>'+(l.length?'<div class="tw"><table><tr><th>Tanggal</th><th>Kas</th><th>Keterangan</th><th class="r">Jumlah</th><th>Petugas</th><th></th></tr>'+l.slice(0,lim).map(function(x){var p=x.jenis==='masuk';return '<tr><td>'+esc(x.tgl)+'</td><td>'+KN[x.kas]+'</td><td>'+esc(x.ket)+(x.auto?' <span class="mut">(otomatis)</span>':'')+'</td><td class="r '+(p?'in':'out')+'">'+(p?'+':'-')+rp(x.jml)+'</td><td>'+esc(x.pet||'')+'</td><td>'+(x.auto?'':'<button class="d" onclick="delKas(\''+x.id+'\')">Hapus</button>')+'</td></tr>'}).join('')+'</table></div>'+(l.length>lim?'<p class="mut">Menampilkan '+lim+' transaksi terbaru.</p>':''):'<p class="mut">Belum ada riwayat kas.</p>')+'</div>';
 }
@@ -759,7 +759,7 @@ async function saveAdmRek(){var n=numv('kas_adm');
 function openKas(m){
   var t={tambah:'Tambah Saldo Kas',kurang:'Kurangi Saldo Kas',pindah:'Pindah Saldo Antar Kas'}[m];
   openModal('<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><h2 style="margin:0">'+t+'</h2><button onclick="closeModal()" aria-label="Tutup">✕</button></div><div class="grid2"><div><label>Tanggal</label><input type="date" id="k_t" value="'+today()+'"></div>'+
-  (m==='pindah'?'<div><label>Dari</label><select id="k_fr"><option value="cash">Kas Cash</option><option value="rekening">Kas Rekening</option><option value="aplikasi">Kas Aplikasi</option></select></div><div><label>Ke</label><select id="k_to"><option value="aplikasi">Kas Aplikasi</option><option value="rekening">Kas Rekening</option><option value="cash">Kas Cash</option></select></div>':'<div><label>Kas</label><select id="k_s"><option value="rekening">Kas Rekening</option><option value="cash">Kas Cash</option><option value="aplikasi">Kas Aplikasi</option></select></div>')+
+  (m==='pindah'?'<div><label>Dari</label><select id="k_fr"><option value="cash">Kas Cash</option><option value="rekening">Kas Rekening</option></select></div><div><label>Ke</label><select id="k_to"><option value="rekening">Kas Rekening</option><option value="cash">Kas Cash</option></select></div>':'<div><label>Kas</label><select id="k_s"><option value="rekening">Kas Rekening</option><option value="cash">Kas Cash</option></select></div>')+
   '<div><label>Jumlah (Rp)</label><input type="text" id="k_j" inputmode="numeric" autocomplete="off" placeholder="0" oninput="fmtIn(this)"></div><div><label>Keterangan</label><input id="k_k" placeholder="mis. setoran modal / ambil cash"></div></div><div id="fm"></div><br><button class="p" onclick="saveKas(\''+m+'\')">Simpan</button> <button onclick="closeModal()">Batal</button>');
   $('k_j').focus()}
 async function saveKas(m){
