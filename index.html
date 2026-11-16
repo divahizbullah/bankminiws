@@ -134,7 +134,7 @@ th{position:sticky;top:0;background:var(--card)}
 var firebaseConfig={apiKey:"AIzaSyCBr0_1GPxqu5fM_an5dUmW8G84fzrac_o",authDomain:"bankminiws-43f13.firebaseapp.com",projectId:"bankminiws-43f13",storageBucket:"bankminiws-43f13.firebasestorage.app",messagingSenderId:"1030566006972",appId:"1:1030566006972:web:7b012402eb4a67b36d80b9",measurementId:"G-129KJ8EM5S"};
 var KAT=['Belanja Barang Dagangan','Operasional','Honor / Upah','ATK & Perlengkapan','Sosial / Kegiatan Sekolah','Lainnya'];
 var JN={setor:'Setoran Tabungan',tarik:'Penarikan Tabungan',masuk:'Pemasukan Koperasi',keluar:'Pengeluaran Koperasi'};
-var db={siswa:[],trx:[],set:{},wali:{}},role=null,who='',wk='',lm='guru',st='kelas',sf='',lk='',tab='dash',msg='',flt={};
+var db={siswa:[],trx:[],set:{},wali:{},ptg:null},role=null,who='',wk='',lm='guru',st='kelas',sf='',lk='',tab='dash',msg='',flt={};
 if(!db.siswa)db.siswa=[];if(!db.trx)db.trx=[];if(!db.kelas)db.kelas=[];if(!db.imp)db.imp=[];if(!db.jual)db.jual=[];
 try{var r=sessionStorage.getItem('kop_role');if(r){var o=JSON.parse(r);if(o.r==='siswa'){role=o.r;who=o.n;wk=o.k||''}}}catch(e){}
 var auth=null,fs=null,sb=null;try{firebase.initializeApp(firebaseConfig);auth=firebase.auth();fs=firebase.firestore();sb=fs;try{firebase.analytics()}catch(e){}}catch(e){console.error(e)}
@@ -153,7 +153,7 @@ async function loadAll(){
   db.siswa=R[1].map(function(s){return{id:s.id,nama:s.nama,kelas:kn[s.kelas_id]||'Tanpa Kelas'}});
   db.trx=R[2].map(function(t){return{id:t.id,tgl:t.tanggal,jenis:t.jenis,sid:t.siswa_id,jml:Number(t.jumlah),ket:t.keterangan,kat:t.kategori||'',pet:t.petugas,ts:Date.parse(t.dibuat_pada)}});
   db.jual=R[3].map(function(j){return{id:j.id,ts:Date.parse(j.dibuat_pada),tgl:j.tanggal,g:j.grup,lay:j.layanan,jn:j.jenis_transaksi||'',no:j.no_tujuan,nm:j.nama_pelanggan||'',pb:j.pembeli||'lain',sid:j.siswa_id||'',dsk:Number(j.diskon||0),nom:Number(j.nominal),fee:Number(j.biaya_admin),ket:j.keterangan,pet:j.petugas}});
-  db.wali={};db.set={};db.adm=null;try{var ps=await fs.collection('pengaturan').get();ps.forEach(function(d){var n=d.data().nilai;if(d.id==='diskon')db.set=n||{};else if(d.id==='admin')db.adm=n||null;else if(d.id==='wali')db.wali=n||{}})}catch(e){db.set={};db.adm=null}
+  db.ptg=null;db.wali={};db.set={};db.adm=null;try{var ps=await fs.collection('pengaturan').get();ps.forEach(function(d){var n=d.data().nilai;if(d.id==='diskon')db.set=n||{};else if(d.id==='admin')db.adm=n||null;else if(d.id==='wali')db.wali=n||{};else if(d.id==='petugas')db.ptg=n||null})}catch(e){db.set={};db.adm=null}
   db.imp=R[4].map(function(i){return{ts:Date.parse(i.dibuat_pada),tgl:i.tanggal,kelas:i.kelas_nama,oleh:i.diimport_oleh,jml:i.jumlah,file:i.nama_file||''}});
   snap={kelas:ids(kelasNames(),function(x){return x}),siswa:ids(db.siswa,function(x){return x.id}),trx:ids(db.trx,function(x){return x.id}),jual:ids(db.jual,function(x){return x.id}),imp:ids(db.imp,function(x){return x.ts})};
 }
@@ -208,6 +208,7 @@ async function refresh(){if(!sb)return;await pq;try{await loadAll();render();toa
 function authReady(){return new Promise(function(r){var u=auth.onAuthStateChanged(function(x){u();r(x)})})}
 async function boot(){
   if(sb){try{await loadAll();if(window._loadErr)toast('Sebagian data gagal dimuat: '+window._loadErr);var u=await authReady();if(u){var p=await guruProfil(u.uid);if(p){role='admin';who=p.nama;gperan=p.peran||'';gemail=u.email||''}}}catch(e){console.error(e)}}
+  if(role==='siswa'&&db.ptg&&wk!==db.ptg.kelas){role=null;who='';wk='';try{sessionStorage.removeItem('kop_role')}catch(e){}}
   render()}
 function $(i){return document.getElementById(i)}
 function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
@@ -221,11 +222,11 @@ function kelasList(){var k={};db.kelas.forEach(function(x){k[x]=1});db.siswa.for
 function opts(arr,sel,all){return (all?'<option value="">'+all+'</option>':'')+arr.map(function(x){return '<option'+(x===sel?' selected':'')+'>'+esc(x)+'</option>'}).join('')}
 function authBtn(){if(sb&&role==='admin')auth.signOut();role=null;gperan='';gemail='';gl=[];who='';wk='';try{sessionStorage.removeItem('kop_role')}catch(e){};tab='dash';msg='';render()}
 function lt(m){lm=m;$('tg').classList.toggle('on',m==='guru');$('ts').classList.toggle('on',m==='siswa');$('pg').classList.toggle('hide',m!=='guru');$('ps').classList.toggle('hide',m!=='siswa');$('le').classList.add('hide');$('ld').textContent=m==='guru'?'Login guru dengan email atau username (nama guru).':'Daftar kelas dan nama diambil dari menu Administrasi yang diisi guru.';if(!sb)$('ld').textContent='Firebase belum dimuat. Periksa koneksi internet.';if(m==='siswa'){fillLogin();if(sb&&!db.siswa.length&&!window._ld){window._ld=1;$('ld').textContent='Memuat data siswa...';loadAll().then(function(){fillLogin();if(!db.siswa.length)$('ld').textContent='Data siswa kosong.'+(window._loadErr?' Error: '+window._loadErr:' Minta guru mengisi data siswa.');else $('ld').textContent='Daftar kelas dan nama diambil dari menu Administrasi yang diisi guru.'}).catch(function(e){$('ld').textContent='Gagal memuat: '+(e.message||e)}).then(function(){window._ld=0})}}}
-function fillLogin(){var ks=kelasList(),k=$('sk'),cur=k.value;k.innerHTML=ks.length?opts(ks,cur):'<option value="">Belum ada data kelas</option>';var l=db.siswa.filter(function(x){return x.kelas===k.value}).sort(function(a,b){return a.nama.localeCompare(b.nama)});$('sn').innerHTML=l.length?l.map(function(x){return '<option value="'+x.id+'">'+esc(x.nama)+'</option>'}).join(''):'<option value="">Belum ada nama siswa</option>'}
+function fillLogin(){var ks=kelasList().filter(function(x){return !db.ptg||x===db.ptg.kelas}),k=$('sk'),cur=k.value;k.innerHTML=ks.length?opts(ks,cur):'<option value="">Belum ada data kelas</option>';var l=db.siswa.filter(function(x){return x.kelas===k.value&&okLogin(x)}).sort(function(a,b){return a.nama.localeCompare(b.nama)});$('sn').innerHTML=l.length?l.map(function(x){return '<option value="'+x.id+'">'+esc(x.nama)+'</option>'}).join(''):'<option value="">Belum ada nama siswa</option>'}
 function ok(r,n,k){role=r;who=n;wk=k||'';try{sessionStorage.setItem('kop_role',JSON.stringify({r:r,n:n,k:wk}))}catch(e){};lg.classList.add('hide');$('lp').value='';tab='dash';msg='';render()}
 function doLogin(){var e=$('le');e.classList.add('hide');
   if(lm==='guru'){loginGuru()}
-  else{var s=sis($('sn').value);if(!s){e.textContent='Pilih kelas dan nama siswa terlebih dahulu.';e.classList.remove('hide');return}ok('siswa',s.nama,s.kelas)}}
+  else{var s=sis($('sn').value);if(s&&!okLogin(s))s=null;if(!s){e.textContent='Pilih kelas dan nama siswa terlebih dahulu.';e.classList.remove('hide');return}ok('siswa',s.nama,s.kelas)}}
 function setTab(t){tab=t;msg='';tgl(1);render();window.scrollTo(0,0)}
 function render(){
   if(!role){lg.classList.remove('hide');$('rb').textContent='Belum masuk';$('lb').classList.add('hide');$('nav').innerHTML='';$('v').innerHTML='';lt(lm);return}
@@ -457,7 +458,7 @@ function amsg(m,e,rr){msg='<div class="msg'+(e?' e':'')+'">'+m+'</div>';if(rr)re
 function setSt(x){st=x;msg='';render();if(x==='guru')loadGuru()}
 function esel(id,sel){return '<select id="'+id+'">'+opts(kelasList(),sel,'Pilih kelas')+'</select>'}
 function vAdmin(){
-  return '<div class="card"><h2>Administrasi</h2><div style="display:flex;gap:6px;flex-wrap:wrap"><button class="'+(st==='kelas'?'on':'')+'" onclick="setSt(\'kelas\')">Masukan Kelas</button><button class="'+(st==='siswa'?'on':'')+'" onclick="setSt(\'siswa\')">Masukan Data Siswa</button><button class="'+(st==='diskon'?'on':'')+'" onclick="setSt(\'diskon\')">Diskon Siswa</button><button onclick="openAdm()">Biaya Admin</button>'+(gperan==='admin'?'<button class="'+(st==='guru'?'on':'')+'" onclick="setSt(\'guru\')">Daftarkan Guru</button>':'')+'</div><div id="am">'+msg+'</div></div>'+(st==='kelas'?aKelas():st==='diskon'?aDiskon():st==='guru'&&gperan==='admin'?aGuru():aSiswa());
+  return '<div class="card"><h2>Administrasi</h2><div style="display:flex;gap:6px;flex-wrap:wrap"><button class="'+(st==='kelas'?'on':'')+'" onclick="setSt(\'kelas\')">Masukan Kelas</button><button class="'+(st==='siswa'?'on':'')+'" onclick="setSt(\'siswa\')">Masukan Data Siswa</button><button class="'+(st==='diskon'?'on':'')+'" onclick="setSt(\'diskon\')">Diskon Siswa</button><button class="'+(st==='petugas'?'on':'')+'" onclick="setSt(\'petugas\')">Petugas Login</button><button onclick="openAdm()">Biaya Admin</button>'+(gperan==='admin'?'<button class="'+(st==='guru'?'on':'')+'" onclick="setSt(\'guru\')">Daftarkan Guru</button>':'')+'</div><div id="am">'+msg+'</div></div>'+(st==='kelas'?aKelas():st==='diskon'?aDiskon():st==='petugas'?aPetugas():st==='guru'&&gperan==='admin'?aGuru():aSiswa());
 }
 function aKelas(){
   var ks=kelasList();
@@ -541,6 +542,7 @@ async function doNaik(){
   db.siswa=db.siswa.filter(function(x){return !gid[x.id]});db.trx=db.trx.filter(function(t){return !gid[t.sid]});
   db.kelas=db.kelas.filter(function(k){return !(k in map)});
   ch.forEach(function(k){if(map[k]&&kelasList().indexOf(map[k])<0)db.kelas.push(map[k]);delete db.wali[k]});
+  var rpt=db.ptg&&(db.ptg.kelas in map);if(rpt)db.ptg=null;
   closeModal();toast('Memproses kenaikan kelas...');
   try{
     await pq;
@@ -549,9 +551,32 @@ async function doNaik(){
     await wr(nn.map(function(k){return{t:'kelas',id:kid[k],d:{nama:k,dibuat_pada:iso}}}).concat(moved.map(function(x){return{t:'siswa',id:x.id,upd:1,d:{kelas_id:kid[x.kelas]}}})));
     nn.forEach(function(k){snap.kelas[k]=1});
     await fs.collection('pengaturan').doc('wali').set({nilai:db.wali});
+    if(rpt)await fs.collection('pengaturan').doc('petugas').set({nilai:null});
     save();
     lk='';sf='';amsg('Kenaikan kelas selesai: '+moved.length+' siswa naik kelas, '+grad.length+' siswa lulus dihapus. Impor siswa baru kelas X lewat Import dari Excel.',0,1)
   }catch(e){toast('Gagal memproses: '+(e.message||e));try{await loadAll();render()}catch(x){}}}
+/* ===== Petugas login (satu kelas) ===== */
+var ptk='';
+function okLogin(x){var g=db.ptg;return !g||(x.kelas===g.kelas&&(!g.ids||!g.ids.length||g.ids.indexOf(x.id)>=0))}
+function aPetugas(){
+  var ks=kelasList(),g=db.ptg;if(!ptk||ks.indexOf(ptk)<0)ptk=g&&ks.indexOf(g.kelas)>=0?g.kelas:(ks[0]||'');
+  var l=db.siswa.filter(function(x){return x.kelas===ptk}).sort(function(a,b){return a.nama.localeCompare(b.nama)}),cfg=g&&g.kelas===ptk;
+  var info=g?'<div class="msg">Saat ini hanya kelas <b>'+esc(g.kelas)+'</b> yang bisa login'+(g.ids&&g.ids.length?' ('+g.ids.length+' siswa terpilih)':' (semua siswanya)')+'.</div>':'<div class="msg e">Belum dibatasi: siswa dari semua kelas masih bisa login.</div>';
+  return '<div class="card"><h2>Petugas Login</h2><p class="mut" style="margin-top:0">Pilih satu kelas yang menjadi petugas, lalu centang siswa yang boleh login. Siswa kelas lain tidak muncul di halaman login.</p>'+info+'<br><div style="max-width:280px"><label>Kelas petugas</label><select onchange="ptk=this.value;render()">'+opts(ks,ptk)+'</select></div><br>'+
+  (l.length?'<div style="display:flex;gap:6px;margin-bottom:8px"><button onclick="ptAll(1)">Pilih semua</button><button onclick="ptAll(0)">Kosongkan</button></div><div class="tw"><table><tr><th></th><th>Nama siswa</th></tr>'+l.map(function(x,i){var c=!cfg||!g.ids||!g.ids.length||g.ids.indexOf(x.id)>=0;return '<tr><td style="width:40px"><input type="checkbox" id="pt_'+i+'" data-id="'+x.id+'"'+(c?' checked':'')+' style="width:auto;min-height:0"></td><td>'+esc(x.nama)+'</td></tr>'}).join('')+'</table></div>':'<p class="mut">Kelas ini belum punya siswa.</p>')+
+  '<br><button class="p" onclick="savePtg()">Simpan</button> '+(g?'<button onclick="resetPtg()">Buka untuk semua kelas</button>':'')+'</div>'}
+function ptAll(v){Array.prototype.forEach.call(document.querySelectorAll('[id^=pt_]'),function(c){c.checked=!!v})}
+async function savePtg(){
+  var cs=Array.prototype.slice.call(document.querySelectorAll('[id^=pt_]')),ids=cs.filter(function(c){return c.checked}).map(function(c){return c.getAttribute('data-id')});
+  if(!ptk)return amsg('Pilih kelas terlebih dahulu.',1);
+  if(!ids.length)return amsg('Centang minimal satu siswa yang boleh login.',1);
+  var v={kelas:ptk,ids:ids.length===cs.length?[]:ids};
+  try{await fs.collection('pengaturan').doc('petugas').set({nilai:v})}catch(x){return amsg(esc(errm(x)),1)}
+  db.ptg=v;amsg('Tersimpan. Login siswa dibatasi ke kelas '+esc(ptk)+' ('+ids.length+' siswa).',0,1)}
+async function resetPtg(){
+  if(!confirm('Buka login untuk siswa semua kelas?'))return;
+  try{await fs.collection('pengaturan').doc('petugas').set({nilai:null})}catch(x){return amsg(esc(errm(x)),1)}
+  db.ptg=null;amsg('Pembatasan dihapus: semua kelas bisa login.',0,1)}
 function eselAll(id,sel){return '<select id="'+id+'"><option value="">Pilih kelas</option><option value="*"'+(sel==='*'?' selected':'')+'>⭐ Semua kelas (dari kolom Kelas di Excel)</option>'+opts(kelasList(),sel)+'</select>'}
 function finAll(rows,by,fn){
   var hi=-1,cn=-1,ck=-1,cw=-1,i;
