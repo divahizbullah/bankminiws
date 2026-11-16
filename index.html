@@ -156,7 +156,7 @@ async function loadAll(){
   db.jual=R[3].map(function(j){return{id:j.id,ts:Date.parse(j.dibuat_pada),tgl:j.tanggal,g:j.grup,lay:j.layanan,jn:j.jenis_transaksi||'',no:j.no_tujuan,nm:j.nama_pelanggan||'',pb:j.pembeli||'lain',sid:j.siswa_id||'',dsk:Number(j.diskon||0),nom:Number(j.nominal),fee:Number(j.biaya_admin),ket:j.keterangan,pet:j.petugas}});
   db.kom=0;db.ptg=null;db.wali={};db.set={};db.adm=null;try{var ps=await fs.collection('pengaturan').get();ps.forEach(function(d){var n=d.data().nilai;if(d.id==='diskon')db.set=n||{};else if(d.id==='admin')db.adm=n||null;else if(d.id==='wali')db.wali=n||{};else if(d.id==='petugas')db.ptg=n||null;else if(d.id==='komisi')db.kom=Number(n)||0})}catch(e){db.set={};db.adm=null}
   db.imp=R[4].map(function(i){return{ts:Date.parse(i.dibuat_pada),tgl:i.tanggal,kelas:i.kelas_nama,oleh:i.diimport_oleh,jml:i.jumlah,file:i.nama_file||''}});
-  db.rek=(R[5]||[]).map(function(r){return{id:r.id,sid:r.siswa_id,no:r.no_rekening,tgl:r.tanggal,jns:r.jenis||'baru',pet:r.petugas||'',ts:Date.parse(r.dibuat_pada)}});
+  db.rek=(R[5]||[]).map(function(r){return{id:r.id,sid:r.siswa_id,no:r.no_rekening,tgl:r.tanggal,jns:r.jenis||'baru',st:r.status||'terbit',pet:r.petugas||'',ts:Date.parse(r.dibuat_pada)}});
   snap={kelas:ids(kelasNames(),function(x){return x}),siswa:ids(db.siswa,function(x){return x.id}),trx:ids(db.trx,function(x){return x.id}),jual:ids(db.jual,function(x){return x.id}),imp:ids(db.imp,function(x){return x.ts}),rek:ids(db.rek,function(x){return x.id})};
 }
 async function wr(ops){for(var i=0;i<ops.length;i+=400){var b=fs.batch();ops.slice(i,i+400).forEach(function(o){var r=fs.collection(o.t).doc(o.id);if(o.del)b.delete(r);else if(o.upd)b.set(r,o.d,{merge:true});else b.set(r,o.d)});await b.commit()}}
@@ -178,7 +178,7 @@ async function pushDiff(){
     await ins('penjualan',nj.map(function(j){return{id:j.id,tanggal:j.tgl,grup:j.g,layanan:j.lay,jenis_transaksi:j.jn||null,no_tujuan:j.no,nama_pelanggan:j.nm||null,pembeli:j.pb||'lain',siswa_id:j.sid||null,diskon:j.dsk||0,nominal:j.nom,biaya_admin:j.fee,keterangan:j.ket||'',petugas:j.pet,dibuat_pada:new Date(j.ts||Date.now()).toISOString()}}));
     await ins('import_siswa',ni.map(function(i){return{tanggal:i.tgl,kelas_id:kid[i.kelas]||null,kelas_nama:i.kelas,diimport_oleh:i.oleh,jumlah:i.jml,nama_file:i.file||null,dibuat_pada:new Date(i.ts).toISOString()}}));
     var nr=db.rek.filter(function(x){return !snap.rek[x.id]}),cr=ids(db.rek,function(x){return x.id}),dr=Object.keys(snap.rek).filter(function(x){return !cr[x]});
-    await ins('rekening',nr.map(function(r){return{id:r.id,siswa_id:r.sid,no_rekening:r.no,tanggal:r.tgl,jenis:r.jns,petugas:r.pet,dibuat_pada:new Date(r.ts||Date.now()).toISOString()}}));await del('rekening','id',dr);nr.forEach(function(x){snap.rek[x.id]=1});dr.forEach(function(x){delete snap.rek[x]});
+    await ins('rekening',nr.map(function(r){return{id:r.id,siswa_id:r.sid,no_rekening:r.no,tanggal:r.tgl,jenis:r.jns,status:r.st||'terbit',petugas:r.pet,dibuat_pada:new Date(r.ts||Date.now()).toISOString()}}));await del('rekening','id',dr);nr.forEach(function(x){snap.rek[x.id]=1});dr.forEach(function(x){delete snap.rek[x]});
     await del('transaksi','id',dt);await del('penjualan','id',dj);await del('siswa','id',ds);await del('kelas','id',dk.map(function(k){return kid[k]}).filter(Boolean));
     nk.forEach(function(k){snap.kelas[k]=1});ns.forEach(function(x){snap.siswa[x.id]=1});nt.forEach(function(x){snap.trx[x.id]=1});nj.forEach(function(x){snap.jual[x.id]=1});ni.forEach(function(x){snap.imp[x.ts]=1});
     dk.forEach(function(k){delete snap.kelas[k];delete kid[k]});ds.forEach(function(x){delete snap.siswa[x]});dt.forEach(function(x){delete snap.trx[x]});dj.forEach(function(x){delete snap.jual[x]});
@@ -251,7 +251,7 @@ function vDash(){
   var kls=kelasList().map(function(k){return [k,db.siswa.filter(function(x){return x.kelas===k}).reduce(function(a,x){return a+Math.max(saldo(x.id),0)},0)]});
   var h='<div class="hero"><div><h2>Halo, '+esc(who)+' \ud83d\udc4b</h2><p>'+(A?'Ringkasan keuangan Bank Mini SMK Walisongo.':'Catat setoran ke rekening BNI dan pembukaan rekening baru.')+'</p></div><div class="acts"><button class="big" onclick="openTrx(\'setor\')">\uff0b Setor Uang</button><button class="big alt" onclick="openRek(\'baru\')">Buka Rekening Baru</button><button class="big alt" onclick="openTrx(\'keluar\')">Pengeluaran</button></div></div>';
   h+='<div class="sg">'+sc('\ud83d\udce5','Setoran Hari Ini',rp(hs))+sc('🏦','Rekening Baru Hari Ini',rekHari())+sc('\ud83e\uddfe','Transaksi Hari Ini',hn)+sc('🛒','Penjualan Hari Ini',rp(jh))+'</div>';
-  if(A)h+='<div class="sg" style="margin-top:12px">'+sc('🏦','Rekening Baru Bulan Ini',rekBulan())+sc('\ud83d\udcc8','Pemasukan Koperasi',rp(s.masuk))+sc('\ud83d\udcc9','Pengeluaran',rp(s.keluar))+sc('💰','Kas Koperasi',rp(s.kas))+sc('🎓','Siswa Berekening',db.rek.length+' / '+db.siswa.length)+'</div>';
+  if(A)h+='<div class="sg" style="margin-top:12px">'+sc('🏦','Rekening Baru Bulan Ini',rekBulan())+sc('\ud83d\udcc8','Pemasukan Koperasi',rp(s.masuk))+sc('\ud83d\udcc9','Pengeluaran',rp(s.keluar))+sc('💰','Kas Koperasi',rp(s.kas))+sc('🎓','Siswa Berekening',db.rek.filter(function(r){return r.st==='terbit'}).length+' / '+db.siswa.length)+'</div>';
   if(A)h+='<div class="cols" style="margin-top:14px"><div class="card"><h2>Rekening Baru per Kelas</h2>'+rkBars()+'</div><div class="card"><h2>Pengeluaran per Kategori</h2>'+bars(Object.keys(kt).map(function(k){return [k,kt[k]]}),'out')+'</div></div>';
   return h+'<div class="card" style="margin-top:14px"><h2>Transaksi Terakhir</h2>'+tbl(db.trx.slice().sort(cmp).slice(0,8),false)+'</div>';
 }
@@ -435,8 +435,8 @@ function formTrx(j){
   '<button class="p" onclick="addTrx()">Simpan Transaksi</button> <button onclick="closeModal()">Batal</button><div id="fm"></div>';
 }
 function toggleJ(){var j=$('f_j').value,sj=(j==='setor'||j==='tarik');document.querySelectorAll('.sj').forEach(function(e){e.classList.toggle('hide',!sj)});document.querySelectorAll('.kj').forEach(function(e){e.classList.toggle('hide',j!=='keluar')})}
-function fillSiswa(){var k=$('f_k');if(!k)return;var l=db.siswa.filter(function(x){return x.kelas===k.value&&rekOf(x.id)}).sort(function(a,b){return a.nama.localeCompare(b.nama)});$('f_s').innerHTML='<option value="">'+(k.value&&!l.length?'Belum ada siswa berekening':'Pilih siswa')+'</option>'+l.map(function(x){return '<option value="'+x.id+'">'+esc(x.nama)+'</option>'}).join('');setNr();toggleJ()}
-function setNr(){var f=$('f_nr');if(!f)return;var r=rekOf($('f_s').value);f.value=r?r.no:''}
+function fillSiswa(){var k=$('f_k');if(!k)return;var l=db.siswa.filter(function(x){return x.kelas===k.value&&rekAktif(x.id)}).sort(function(a,b){return a.nama.localeCompare(b.nama)});$('f_s').innerHTML='<option value="">'+(k.value&&!l.length?'Belum ada siswa berekening':'Pilih siswa')+'</option>'+l.map(function(x){return '<option value="'+x.id+'">'+esc(x.nama)+'</option>'}).join('');setNr();toggleJ()}
+function setNr(){var f=$('f_nr');if(!f)return;var r=rekAktif($('f_s').value);f.value=r?r.no:''}
 function note(m,e){$('fm').innerHTML='<div class="msg'+(e?' e':'')+'">'+m+'</div>'}
 function addTrx(){
   var j=$('f_j').value,jml=numv('f_jml'),sj=(j==='setor'||j==='tarik'),pet=$('f_p').value.trim(),sid=sj?$('f_s').value:null;
@@ -444,9 +444,9 @@ function addTrx(){
   if(sj&&!sid)return note('Pilih kelas dan nama siswa.',1);
   if(!jml||jml<1)return note('Jumlah harus lebih dari 0.',1);
   if(!pet)return note('Nama petugas piket wajib diisi.',1);
-  if(j==='setor'&&!rekOf(sid))return note('Siswa belum punya rekening. Buka rekening dulu.',1);
+  if(j==='setor'&&!rekAktif(sid))return note('Siswa belum punya rekening yang sudah terbit.',1);
   if((j==='keluar'||j==='masuk')&&!$('f_ket').value.trim())return note('Keterangan wajib diisi untuk transaksi koperasi.',1);
-  db.trx.push({id:uid(),tgl:$('f_tgl').value,jenis:j,sid:sid,jml:jml,ket:$('f_ket').value.trim(),kat:j==='keluar'?$('f_kat').value:'',rek:(sj&&rekOf(sid))?rekOf(sid).no:'',pet:pet,ts:Date.now()});
+  db.trx.push({id:uid(),tgl:$('f_tgl').value,jenis:j,sid:sid,jml:jml,ket:$('f_ket').value.trim(),kat:j==='keluar'?$('f_kat').value:'',rek:(sj&&rekAktif(sid))?rekAktif(sid).no:'',pet:pet,ts:Date.now()});
   try{localStorage.setItem('kop_pet',pet)}catch(e){}
   if(sj)lk=$('f_k').value;save();closeModal();msg='';toast('Transaksi tersimpan: '+JN[j]+' '+rp(jml));render();
 }
@@ -461,7 +461,7 @@ function fbar(){return '<div class="grid2"><div><label>Kelas</label><select onch
 function vRiwayat(){var l=filt();return '<div class="card"><h2>Riwayat Transaksi</h2>'+fbar()+'<br>'+tbl(l,isA())+'</div>'}
 function delTrx(id){if(!confirm('Hapus transaksi ini?'))return;db.trx=db.trx.filter(function(t){return t.id!==id});save();render()}
 function sorted(){return db.siswa.slice().sort(function(a,b){return a.kelas.localeCompare(b.kelas)||a.nama.localeCompare(b.nama)})}
-function siswaTbl(l,del){return '<div class="tw"><table><tr><th>Nama</th><th>Kelas</th><th>No. Rekening BNI</th>'+(del?'<th></th>':'')+'</tr>'+(l.map(function(s){return '<tr><td>'+esc(s.nama)+'</td><td>'+esc(s.kelas)+'</td><td>'+esc((rekOf(s.id)||{}).no||'Belum punya rekening')+'</td>'+(del?'<td><button class="d" onclick="delSiswa(\''+s.id+'\')">Hapus</button></td>':'')+'</tr>'}).join('')||'<tr><td colspan="4" class="mut">Belum ada siswa.</td></tr>')+'</table></div>'}
+function siswaTbl(l,del){return '<div class="tw"><table><tr><th>Nama</th><th>Kelas</th><th>No. Rekening BNI</th>'+(del?'<th></th>':'')+'</tr>'+(l.map(function(s){return '<tr><td>'+esc(s.nama)+'</td><td>'+esc(s.kelas)+'</td><td>'+esc((function(r){return r?(r.st==='terbit'?r.no:'Belum terbit'):'Belum punya rekening'})(rekOf(s.id)))+'</td>'+(del?'<td><button class="d" onclick="delSiswa(\''+s.id+'\')">Hapus</button></td>':'')+'</tr>'}).join('')||'<tr><td colspan="4" class="mut">Belum ada siswa.</td></tr>')+'</table></div>'}
 function vSiswa(){var l=sorted();return '<div class="card"><h2>Saldo Siswa ('+l.length+')</h2>'+siswaTbl(l,false)+'</div>'}
 function amsg(m,e,rr){msg='<div class="msg'+(e?' e':'')+'">'+m+'</div>';if(rr)render();else if($('am'))$('am').innerHTML=msg;window.scrollTo(0,0)}
 function setSt(x){st=x;msg='';render();if(x==='guru')loadGuru()}
@@ -635,8 +635,9 @@ function askPg(){
 function okPg(){var v=$('pgs').value;if(!v){$('pgm').innerHTML='<div class="msg e" style="margin-top:10px">Pilih nama petugas terlebih dahulu.</div>';return}
   pgs=v;try{sessionStorage.setItem('kop_pgs',v)}catch(e){};closeModal();render();toast('Petugas: '+v)}
 /* ===== Rekening BNI ===== */
-var rf={m:'',j:''};
+var rf={m:'',j:'',s:''};
 function rekOf(sid){return db.rek.find(function(r){return r.sid===sid})}
+function rekAktif(sid){return db.rek.find(function(r){return r.sid===sid&&r.st==='terbit'&&r.no})}
 function rekBulan(){var m=today().slice(0,7);return db.rek.filter(function(r){return r.jns==='baru'&&String(r.tgl).slice(0,7)===m}).length}
 function rekHari(){var d=today();return db.rek.filter(function(r){return r.jns==='baru'&&r.tgl===d}).length}
 function rkBars(){var o={};db.rek.forEach(function(r){if(r.jns!=='baru')return;var z=sis(r.sid);if(z)o[z.kelas]=(o[z.kelas]||0)+1});var a=Object.keys(o).sort().map(function(k){return[k,o[k]]}),mx=Math.max.apply(null,a.map(function(x){return x[1]}).concat([1]));
@@ -645,34 +646,50 @@ function openRek(j){
   if(role==='siswa'&&!pgs)return needPg();
   if(!kelasList().length)return toast('Belum ada data kelas. Minta guru mengisi menu Administrasi.');
   var lama=j==='lama',pn=role==='siswa'?pgs:who;
-  openModal('<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><h2 style="margin:0">'+(lama?'Tambah Rekening Lama (Manual)':'Buka Rekening Baru')+'</h2><button onclick="closeModal()" aria-label="Tutup">✕</button></div><p class="mut" style="margin-top:0">'+(lama?'Untuk siswa yang sudah punya rekening BNI sebelum aplikasi ini dipakai. Tidak dihitung sebagai rekening baru.':'Catat nomor rekening BNI yang baru dibuat untuk siswa. Dihitung sebagai rekening baru (penghasilan sekolah).')+'</p><div class="grid2">'+
+  openModal('<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><h2 style="margin:0">'+(lama?'Tambah Rekening Lama (Manual)':'Buka Rekening Baru')+'</h2><button onclick="closeModal()" aria-label="Tutup">✕</button></div><p class="mut" style="margin-top:0">'+(lama?'Untuk siswa yang sudah punya rekening BNI sebelum aplikasi ini dipakai. Tidak dihitung sebagai rekening baru.':'Catat nomor rekening BNI yang baru dibuat untuk siswa. Dihitung sebagai rekening baru (penghasilan sekolah). Jika nomor belum keluar, pilih Belum terbit; nomor diisi nanti lewat Edit di menu Rekening.')+'</p><div class="grid2">'+
   '<div><label>Kelas</label><select id="r_k" onchange="fillRek()">'+opts(kelasList(),lk,'Pilih kelas')+'</select></div><div><label>Nama siswa</label><select id="r_s"></select></div>'+
-  '<div><label>No. Rekening BNI</label><input id="r_n" inputmode="numeric" autocomplete="off" placeholder="mis. 1234567890"></div><div><label>Tanggal</label><input type="date" id="r_t" value="'+today()+'"></div>'+
+  ''+(lama?'':'<div><label>Status rekening</label><select id="r_st" onchange="rStat()"><option value="belum">Belum terbit</option><option value="terbit">Sudah terbit</option></select></div>')+'<div id="r_nw"'+(lama?'':' class="hide"')+'><label>No. Rekening BNI</label><input id="r_n" inputmode="numeric" autocomplete="off" placeholder="mis. 1234567890"></div><div><label>Tanggal</label><input type="date" id="r_t" value="'+today()+'"></div>'+
   '<div><label>Petugas</label><input value="'+esc(pn)+'" readonly></div></div><div id="rm"></div><br><button class="p" onclick="addRek(\''+(lama?'lama':'baru')+'\')">Simpan</button> <button onclick="closeModal()">Batal</button>');fillRek()}
+function rStat(){$('r_nw').classList.toggle('hide',$('r_st').value!=='terbit')}
 function fillRek(){var k=$('r_k').value,l=db.siswa.filter(function(x){return x.kelas===k&&!rekOf(x.id)}).sort(function(a,b){return a.nama.localeCompare(b.nama)});
   $('r_s').innerHTML='<option value="">'+(k&&!l.length?'Semua siswa sudah punya rekening':'Pilih siswa')+'</option>'+l.map(function(x){return '<option value="'+x.id+'">'+esc(x.nama)+'</option>'}).join('')}
 function addRek(j){
   function er(m){$('rm').innerHTML='<div class="msg e">'+m+'</div>'}
-  var sid=$('r_s').value,no=$('r_n').value.replace(/[\s-]/g,''),tg=$('r_t').value,pn=role==='siswa'?pgs:who;
+  var sid=$('r_s').value,no=$('r_n').value.replace(/[\s-]/g,''),tg=$('r_t').value,pn=role==='siswa'?pgs:who,st=j==='lama'?'terbit':$('r_st').value;
   if(!sid)return er('Pilih kelas dan nama siswa.');
-  if(!/^\d{8,16}$/.test(no))return er('Nomor rekening harus berupa angka (8-16 digit).');
+  if(st==='terbit'&&!/^\d{8,16}$/.test(no))return er('Nomor rekening harus berupa angka (8-16 digit).');
   if(!tg)return er('Tanggal wajib diisi.');
-  if(db.rek.some(function(r){return r.no===no}))return er('Nomor rekening ini sudah terdaftar untuk siswa lain.');
+  if(st==='terbit'&&db.rek.some(function(r){return r.no===no}))return er('Nomor rekening ini sudah terdaftar untuk siswa lain.');
   if(rekOf(sid))return er('Siswa ini sudah punya rekening.');
-  lk=$('r_k').value;db.rek.push({id:uid(),sid:sid,no:no,tgl:tg,jns:j,pet:pn,ts:Date.now()});save();closeModal();toast('Rekening tersimpan: '+sis(sid).nama+' - '+no);render()}
+  lk=$('r_k').value;db.rek.push({id:uid(),sid:sid,no:st==='terbit'?no:'',tgl:tg,jns:j,st:st,pet:pn,ts:Date.now()});save();closeModal();toast('Rekening tersimpan: '+sis(sid).nama+' - '+(st==='terbit'?no:'belum terbit'));render()}
+function editRek(id){
+  var r=db.rek.find(function(x){return x.id===id});if(!r)return;var z=sis(r.sid),t=r.st==='terbit';
+  openModal('<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><h2 style="margin:0">Edit Rekening</h2><button onclick="closeModal()" aria-label="Tutup">✕</button></div><div class="grid2"><div><label>Siswa</label><input value="'+esc(z?z.nama+' ('+z.kelas+')':'-')+'" readonly></div>'+
+  '<div><label>Status rekening</label><select id="e_st" onchange="eStat()"><option value="belum"'+(t?'':' selected')+'>Belum terbit</option><option value="terbit"'+(t?' selected':'')+'>Sudah terbit</option></select></div>'+
+  '<div id="e_nw"'+(t?'':' class="hide"')+'><label>No. Rekening BNI</label><input id="e_n" inputmode="numeric" autocomplete="off" value="'+esc(r.no||'')+'" placeholder="mis. 1234567890"></div>'+
+  '<div><label>Tanggal</label><input type="date" id="e_t" value="'+esc(r.tgl)+'"></div></div><div id="em"></div><br><button class="p" onclick="saveRek(\''+id+'\')">Simpan</button> <button onclick="closeModal()">Batal</button>')}
+function eStat(){$('e_nw').classList.toggle('hide',$('e_st').value!=='terbit')}
+async function saveRek(id){
+  function er(m){$('em').innerHTML='<div class="msg e">'+m+'</div>'}
+  var r=db.rek.find(function(x){return x.id===id});if(!r)return;
+  var st=$('e_st').value,no=$('e_n').value.replace(/[\s-]/g,''),tg=$('e_t').value;
+  if(!tg)return er('Tanggal wajib diisi.');
+  if(st==='terbit'){if(!/^\d{8,16}$/.test(no))return er('Isi nomor rekening (angka 8-16 digit).');if(db.rek.some(function(x){return x.id!==id&&x.no===no}))return er('Nomor rekening ini sudah terdaftar untuk siswa lain.')}else no='';
+  try{await fs.collection('rekening').doc(id).set({no_rekening:no,status:st,tanggal:tg},{merge:true})}catch(x){return er(esc(errm(x)))}
+  r.no=no;r.st=st;r.tgl=tg;closeModal();toast(st==='terbit'?'Rekening ditandai sudah terbit':'Rekening disimpan (belum terbit)');render()}
 function delRek(id){var r=db.rek.find(function(x){return x.id===id});if(!r||!confirm('Hapus rekening '+r.no+'?'))return;db.rek=db.rek.filter(function(x){return x.id!==id});save();render()}
 async function saveKom(){var n=numv('kom_n');if(n<0)return amsg('Nilai tidak boleh negatif.',1);
   try{await fs.collection('pengaturan').doc('komisi').set({nilai:n})}catch(x){return amsg(esc(errm(x)),1)}
   db.kom=n;amsg('Komisi per rekening disimpan.',0,1)}
-function rekList(){return db.rek.filter(function(r){return(!rf.m||String(r.tgl).slice(0,7)===rf.m)&&(!rf.j||r.jns===rf.j)}).sort(function(a,b){return String(b.tgl).localeCompare(String(a.tgl))||b.ts-a.ts})}
+function rekList(){return db.rek.filter(function(r){return(!rf.m||String(r.tgl).slice(0,7)===rf.m)&&(!rf.j||r.jns===rf.j)&&(!rf.s||r.st===rf.s)}).sort(function(a,b){return String(b.tgl).localeCompare(String(a.tgl))||b.ts-a.ts})}
 function vRekening(){
-  var l=rekList(),nb=l.filter(function(r){return r.jns==='baru'}).length,nbAll=db.rek.filter(function(r){return r.jns==='baru'}).length,blm=db.siswa.filter(function(x){return !rekOf(x.id)}).length;
-  return '<div class="sg">'+sc('🏦','Total Rekening',db.rek.length)+sc('🆕','Rekening Baru'+(rf.m?' ('+rf.m+')':''),nb)+sc('💵','Komisi'+(rf.m?' Bulan Ini':' Total'),rp(nb*db.kom))+sc('⏳','Belum Punya Rekening',blm)+'</div>'+
-  '<div class="card" style="margin-top:14px"><h2>Rekening BNI Siswa</h2><div class="grid2"><div><label>Bulan</label><input type="month" value="'+esc(rf.m)+'" onchange="rf.m=this.value;render()"></div><div><label>Jenis</label><select onchange="rf.j=this.value;render()"><option value="">Semua</option><option value="baru"'+(rf.j==='baru'?' selected':'')+'>Baru</option><option value="lama"'+(rf.j==='lama'?' selected':'')+'>Lama (manual)</option></select></div><div><label>Komisi per rekening baru (Rp)</label><input id="kom_n" inputmode="numeric" autocomplete="off" oninput="fmtIn(this)" value="'+fmtN(db.kom)+'"></div></div><br>'+
+  var l=rekList(),nb=l.filter(function(r){return r.jns==='baru'}).length,nt=l.filter(function(r){return r.jns==='baru'&&r.st==='terbit'}).length,bt=db.rek.filter(function(r){return r.st!=='terbit'}).length,nbAll=db.rek.filter(function(r){return r.jns==='baru'}).length,blm=db.siswa.filter(function(x){return !rekOf(x.id)}).length;
+  return '<div class="sg">'+sc('🏦','Total Rekening',db.rek.length)+sc('🆕','Rekening Baru'+(rf.m?' ('+rf.m+')':''),nb)+sc('💵','Komisi'+(rf.m?' Bulan Ini':' Total'),rp(nt*db.kom))+sc('⏳','Belum Punya Rekening',blm)+sc('📝','Belum Terbit',bt)+'</div>'+
+  '<div class="card" style="margin-top:14px"><h2>Rekening BNI Siswa</h2><div class="grid2"><div><label>Bulan</label><input type="month" value="'+esc(rf.m)+'" onchange="rf.m=this.value;render()"></div><div><label>Jenis</label><select onchange="rf.j=this.value;render()"><option value="">Semua</option><option value="baru"'+(rf.j==='baru'?' selected':'')+'>Baru</option><option value="lama"'+(rf.j==='lama'?' selected':'')+'>Lama (manual)</option></select></div><div><label>Status</label><select onchange="rf.s=this.value;render()"><option value="">Semua</option><option value="terbit"'+(rf.s==='terbit'?' selected':'')+'>Sudah terbit</option><option value="belum"'+(rf.s==='belum'?' selected':'')+'>Belum terbit</option></select></div><div><label>Komisi per rekening baru (Rp)</label><input id="kom_n" inputmode="numeric" autocomplete="off" oninput="fmtIn(this)" value="'+fmtN(db.kom)+'"></div></div><br>'+
   '<button class="p" onclick="saveKom()">Simpan Komisi</button> <button onclick="openRek(\'baru\')">＋ Buka Rekening Baru</button> <button onclick="openRek(\'lama\')">＋ Tambah Rekening Lama (Manual)</button> <button onclick="rekXls()">Unduh Excel</button><div id="am">'+msg+'</div></div>'+
-  '<div class="card"><h2>Daftar Rekening ('+l.length+')</h2>'+(l.length?'<div class="tw"><table><tr><th>Tanggal</th><th>Nama</th><th>Kelas</th><th>No. Rekening</th><th>Jenis</th><th>Petugas</th><th></th></tr>'+l.map(function(r){var z=sis(r.sid);return '<tr><td>'+esc(r.tgl)+'</td><td>'+(z?esc(z.nama):'-')+'</td><td>'+(z?esc(z.kelas):'-')+'</td><td>'+esc(r.no)+'</td><td>'+(r.jns==='baru'?'<b class="in">Baru</b>':'Lama')+'</td><td>'+esc(r.pet)+'</td><td><button class="d" onclick="delRek(\''+r.id+'\')">Hapus</button></td></tr>'}).join('')+'</table></div>':'<p class="mut">Belum ada rekening.</p>')+'</div>'}
+  '<div class="card"><h2>Daftar Rekening ('+l.length+')</h2>'+(l.length?'<div class="tw"><table><tr><th>Tanggal</th><th>Nama</th><th>Kelas</th><th>No. Rekening</th><th>Jenis</th><th>Status</th><th>Petugas</th><th></th></tr>'+l.map(function(r){var z=sis(r.sid);return '<tr><td>'+esc(r.tgl)+'</td><td>'+(z?esc(z.nama):'-')+'</td><td>'+(z?esc(z.kelas):'-')+'</td><td>'+esc(r.st==='terbit'?r.no:'-')+'</td><td>'+(r.jns==='baru'?'<b class="in">Baru</b>':'Lama')+'</td><td>'+(r.st==='terbit'?'<b class="in">Sudah terbit</b>':'<b style="color:var(--amb)">Belum terbit</b>')+'</td><td>'+esc(r.pet)+'</td><td><button onclick="editRek(\''+r.id+'\')">Edit</button> <button class="d" onclick="delRek(\''+r.id+'\')">Hapus</button></td></tr>'}).join('')+'</table></div>':'<p class="mut">Belum ada rekening.</p>')+'</div>'}
 function rekXls(){if(!window.XLSX)return toast('Pembaca Excel belum termuat (perlu internet).');
-  var rows=[['Tanggal','Nama','Kelas','No. Rekening','Jenis','Petugas']].concat(rekList().map(function(r){var z=sis(r.sid);return[r.tgl,z?z.nama:'',z?z.kelas:'',r.no,r.jns==='baru'?'Baru':'Lama',r.pet]}));
+  var rows=[['Tanggal','Nama','Kelas','No. Rekening','Jenis','Status','Petugas']].concat(rekList().map(function(r){var z=sis(r.sid);return[r.tgl,z?z.nama:'',z?z.kelas:'',r.st==='terbit'?r.no:'',r.jns==='baru'?'Baru':'Lama',r.st==='terbit'?'Sudah terbit':'Belum terbit',r.pet]}));
   var wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),'Rekening');XLSX.writeFile(wb,'rekening-bni'+(rf.m?'-'+rf.m:'')+'.xlsx')}
 function eselAll(id,sel){return '<select id="'+id+'"><option value="">Pilih kelas</option><option value="*"'+(sel==='*'?' selected':'')+'>⭐ Semua kelas (dari kolom Kelas di Excel)</option>'+opts(kelasList(),sel)+'</select>'}
 function finAll(rows,by,fn){
