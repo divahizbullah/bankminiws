@@ -105,6 +105,29 @@ th{position:sticky;top:0;background:var(--card)}
 @media(max-width:380px){.sg,.svc{grid-template-columns:1fr}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
 .svb.dis{opacity:.5}.svb.big{padding:24px 10px;font-size:15px}
+
+/* ===== Kasir penuh ===== */
+.ks{display:flex;flex-direction:column;gap:14px;min-height:calc(100vh - 110px)}
+.ksh{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between}
+.ksh h2{margin:0;font-size:22px}.ksh p{margin:2px 0 0;color:var(--mut);font-size:13px}
+.kst{display:inline-flex;align-items:center;gap:8px;background:var(--pri2);color:var(--pri);padding:7px 14px;border-radius:99px;font-weight:600;font-size:13px}
+.kg{flex:1;display:grid;gap:16px;grid-template-columns:1fr 1fr}
+.kb{position:relative;overflow:hidden;border:0;border-radius:24px;padding:28px;color:#fff;text-align:left;display:flex;flex-direction:column;justify-content:space-between;gap:18px;min-height:340px;box-shadow:0 12px 30px rgba(20,60,40,.22);transition:transform .2s,box-shadow .2s,filter .2s}
+.kb:hover:not(.on):not(.p){background:none}
+.kb.a{background:linear-gradient(145deg,#2bb673 0%,#1f7a4d 55%,#12503a 100%)}
+.kb.b{background:linear-gradient(145deg,#2f9fd8 0%,#1b6fb3 55%,#0f4a7c 100%)}
+.kb:hover{transform:translateY(-4px);box-shadow:0 18px 38px rgba(20,60,40,.3);filter:brightness(1.05)}
+.kb:active{transform:scale(.98)}
+.kb::before,.kb::after{content:"";position:absolute;border-radius:50%;background:rgba(255,255,255,.1);pointer-events:none}
+.kb::before{width:260px;height:260px;right:-70px;top:-80px}.kb::after{width:170px;height:170px;right:40px;bottom:-90px;background:rgba(255,255,255,.08)}
+.kb .ic{font-size:64px;line-height:1;width:112px;height:112px;border-radius:30px;background:rgba(255,255,255,.18);display:grid;place-items:center;border:1px solid rgba(255,255,255,.3);animation:fl 3.2s ease-in-out infinite}
+.kb.b .ic{animation-delay:.6s}
+@keyframes fl{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+.kb h3{margin:0;font-size:30px;line-height:1.15;position:relative}.kb p{margin:6px 0 0;opacity:.88;font-size:15px;position:relative;max-width:30ch}
+.kb .go2{align-self:flex-start;background:#fff;color:#14573a;padding:10px 18px;border-radius:99px;font-weight:700;font-size:14px;position:relative}
+.kb.b .go2{color:#0f4a7c}
+.kb.dis{opacity:.55;filter:grayscale(.3)}
+@media(max-width:820px){.kg{grid-template-columns:1fr}.kb{min-height:230px;padding:22px}.kb .ic{width:84px;height:84px;font-size:46px;border-radius:24px}.kb h3{font-size:24px}.ks{min-height:0}}
 </style>
 </head>
 <body>
@@ -597,8 +620,15 @@ function pgBox(){
   return '<div class="card"><h2>Petugas Bertugas</h2><label>Pilih nama petugas sebelum mencatat</label><select id="pgs" onchange="setPgs(this.value)"><option value="">- pilih nama petugas -</option>'+nm.map(function(n){return '<option'+(n===pgs?' selected':'')+'>'+esc(n)+'</option>'}).join('')+'</select>'+
   (pgs?'<div class="msg">Mencatat sebagai <b>'+esc(pgs)+'</b>.</div>':'<div class="msg e">Pilih nama petugas dulu agar bisa mencatat.</div>')+'</div>'}
 function vKasir(){
-  var d=pgs?'':' dis',b=function(a){return a.map(function(x){return '<button class="svb big'+d+'" onclick="'+x[3]+'"><i>'+x[1]+'</i>'+x[2]+'</button>'}).join('')};
-  return '<div class="card"><h2>Kasir</h2><div class="svc">'+b([['setor','＋','Setor Uang',"openTrx('setor')"],['rek','🏦','Pembuatan Rekening Baru',"openRek('baru')"]])+'</div></div>'}
+  var d=pgs?'':' dis',td=today(),hs=0,hn=0;
+  db.trx.forEach(function(t){if(t.tgl===td&&t.jenis==='setor'){hs+=t.jml;hn++}});
+  var tg=new Date().toLocaleDateString('id-ID',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  return '<div class="ks"><div class="ksh"><div><h2>Halo, '+esc(pgs||who)+' \ud83d\udc4b</h2><p>'+esc(tg)+' \u00b7 Pilih layanan di bawah untuk mulai mencatat.</p></div><span class="kst">\ud83d\udfe2 '+(pgs?'Bertugas: '+esc(pgs):'Pilih petugas dulu')+'</span></div>'+
+  '<div class="sg">'+sc('\ud83d\udce5','Setoran Hari Ini',rp(hs))+sc('\ud83e\uddfe','Jumlah Setoran',hn)+sc('\ud83c\udfe6','Rekening Baru Hari Ini',rekHari())+'</div>'+
+  '<div class="kg">'+
+  '<button class="kb a'+d+'" onclick="openTrx(\'setor\')"><div class="ic">\ud83d\udcb0</div><div><h3>Setor Uang</h3><p>Catat setoran tabungan siswa ke rekening BNI.</p></div><span class="go2">Mulai setor \u2192</span></button>'+
+  '<button class="kb b'+d+'" onclick="openRek(\'baru\')"><div class="ic">\ud83c\udfe6</div><div><h3>Pembuatan Rekening Baru</h3><p>Daftarkan rekening BNI baru untuk siswa.</p></div><span class="go2">Buat rekening \u2192</span></button>'+
+  '</div></div>'}
 /* ===== Rekap harian petugas ===== */
 var rk={tgl:'',pet:null};
 function jam(ts){return isFinite(ts)?new Date(ts).toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'}):'-'}
