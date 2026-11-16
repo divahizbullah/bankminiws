@@ -258,7 +258,7 @@ function setTab(t){tab=t;msg='';tgl(1);render();window.scrollTo(0,0)}
 function render(){
   if(!role){lg.classList.remove('hide');$('rb').textContent='Belum masuk';$('lb').classList.add('hide');$('nav').innerHTML='';$('v').innerHTML='';lt(lm);return}
   $('lb').classList.remove('hide');$('rb').textContent=isA()?'Guru: '+who:(pgs?'Petugas: '+pgs:'Siswa: '+who+' ('+wk+')');$('lb').textContent='Keluar';
-  var cm=[['jual','Penjualan','🛒'],['bayar','Pembayaran','💳'],['digital','Layanan Digital','📲']];var tabs=isA()?[['dash','Dashboard','📊'],['rekening','Rekening','🏦'],['kas','Kas','💰']].concat(cm,[['riwayat','Riwayat','🧾'],['admin','Administrasi','⚙️'],['laporan','Laporan','📑'],['lapjual','Laporan Jualan','📈'],['profil','Profil','👤']]):[['dash','Kasir','🧾']].concat(cm,[['rekap','Rekap Harian','📑']]);
+  var cm=[['jual','Penjualan','🛒'],['bayar','Pembayaran','💳'],['digital','Layanan Digital','📲']];var tabs=isA()?[['dash','Dashboard','📊'],['rekening','Rekening','🏦'],['kas','Kas','💰']].concat(cm,[['riwayat','Riwayat','🧾'],['admin','Administrasi','⚙️'],['laporan','Laporan','📑'],['lapjual','Laporan Jualan','📈'],['profil','Profil','👤']]):[['dash','Kasir','🧾'],['kas','Kas','💰']].concat(cm,[['rekap','Rekap Harian','📑']]);
   $('nav').innerHTML=tabs.map(function(t){return '<button class="'+(tab===t[0]?'on':'')+'" onclick="setTab(\''+t[0]+'\')"><span>'+t[2]+'</span>'+t[1]+'</button>'}).join('');
   var f={dash:vDash,riwayat:vRiwayat,siswa:vSiswa,admin:vAdmin,laporan:vLaporan,lapjual:vLapJual,rekening:vRekening,kas:vKas,rekap:vRekap,profil:vProfil,jual:function(){return vSvc('jual')},bayar:function(){return vSvc('bayar')},digital:function(){return vSvc('digital')}}[tab]||vDash;
   $('v').innerHTML=f();if(tab==='input')fillSiswa();
@@ -670,8 +670,16 @@ function kasRows(){
   var a=db.kas.map(function(e){return{id:e.id,tgl:e.tgl,ts:e.ts,kas:e.kas,jenis:e.jenis,jml:e.jml,ket:e.ket,pet:e.pet}});
   db.rek.forEach(function(r){if(r.jns==='baru'&&r.adm>0){var z=sis(r.sid);a.push({tgl:r.tgl,ts:r.ts,kas:'rekening',jenis:'keluar',jml:r.adm,ket:'Biaya admin rekening baru'+(z?' - '+z.nama+' ('+z.kelas+')':''),pet:r.pet,auto:1});a.push({tgl:r.tgl,ts:r.ts,kas:'cash',jenis:'masuk',jml:r.adm,ket:'Biaya admin rekening baru'+(z?' - '+z.nama+' ('+z.kelas+')':''),pet:r.pet,auto:1})}});
   return a.sort(function(x,y){return x.tgl<y.tgl?1:x.tgl>y.tgl?-1:(y.ts||0)-(x.ts||0)})}
+var kasTgl='';
+function vKasPtg(){
+  var s=kasSaldo(),t=kasTgl||today(),l=kasRows().filter(function(x){return x.kas==='cash'&&x.jenis==='masuk'&&x.tgl===t}),tot=0,au=0;
+  l.forEach(function(x){tot+=x.jml;if(x.auto)au+=x.jml});
+  return '<div class="hero"><div><h2>Kas Bank Mini</h2><p>Informasi saldo kas dan pendapatan harian yang masuk ke kas cash.</p></div></div>'+
+  '<div class="sg">'+sc('🏦','Saldo Kas Rekening',rp(s.rek))+sc('💵','Saldo Kas Cash',rp(s.cash))+sc('📥','Masuk Kas Cash ('+esc(t)+')',rp(tot))+sc('🧾','Dari Admin Rekening Baru',rp(au))+'</div>'+
+  '<div class="card" style="margin-top:14px"><h2>Pendapatan Harian Masuk Kas Cash</h2><div class="grid2"><div><label>Tanggal</label><input type="date" value="'+t+'" onchange="kasTgl=this.value;render()"></div></div><br>'+
+  (l.length?'<div class="tw"><table><tr><th>Tanggal</th><th>Keterangan</th><th class="r">Jumlah</th><th>Petugas</th></tr>'+l.map(function(x){return '<tr><td>'+esc(x.tgl)+'</td><td>'+esc(x.ket)+'</td><td class="r in">+'+rp(x.jml)+'</td><td>'+esc(x.pet||'')+'</td></tr>'}).join('')+'<tr><th colspan="2">Total</th><th class="r">'+rp(tot)+'</th><th></th></tr></table></div>':'<p class="mut">Belum ada pemasukan ke kas cash pada tanggal ini.</p>')+'</div>'}
 function vKas(){
-  if(!isA())return vDash();
+  if(!isA())return vKasPtg();
   var s=kasSaldo(),l=kasRows(),lim=200;
   return '<div class="hero"><div><h2>Kas Bank Mini</h2><p>Setiap pembuatan rekening baru: Saldo Kas Rekening berkurang dan Saldo Kas Cash bertambah sebesar biaya admin.</p></div><div class="acts"><button class="big" onclick="openKas(\'tambah\')">＋ Tambah Saldo</button><button class="big alt" onclick="openKas(\'kurang\')">− Kurangi Saldo</button><button class="big alt" onclick="openKas(\'pindah\')">⇄ Pindah Kas</button></div></div>'+
   '<div class="sg">'+sc('🏦','Saldo Kas Rekening',rp(s.rek))+sc('💵','Saldo Kas Cash',rp(s.cash))+sc('💰','Total Kas',rp(s.rek+s.cash))+sc('🧾','Total Admin Diterima Cash',rp(s.adm)+' ('+s.n+' rek.)')+'</div>'+
