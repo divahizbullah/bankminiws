@@ -598,8 +598,7 @@ function pgBox(){
   (pgs?'<div class="msg">Mencatat sebagai <b>'+esc(pgs)+'</b>.</div>':'<div class="msg e">Pilih nama petugas dulu agar bisa mencatat.</div>')+'</div>'}
 function vKasir(){
   var d=pgs?'':' dis',b=function(a){return a.map(function(x){return '<button class="svb big'+d+'" onclick="'+x[3]+'"><i>'+x[1]+'</i>'+x[2]+'</button>'}).join('')};
-  return '<div class="card"><h2>Tabungan & Kas</h2><div class="svc">'+b([['setor','＋','Setor Uang',"openTrx('setor')"],['rek','🏦','Buka Rekening Baru',"openRek('baru')"],['keluar','🧾','Pengeluaran',"openTrx('keluar')"]])+'</div></div>'+
-  '<div class="card"><h2>Layanan</h2><div class="svc">'+b([['jual','🛒','Penjualan',"setTab('jual')"],['digital','📲','Layanan Digital',"setTab('digital')"],['bayar','💳','Pembayaran',"setTab('bayar')"]])+'</div></div>'}
+  return '<div class="card"><h2>Kasir</h2><div class="svc">'+b([['setor','＋','Setor Uang',"openTrx('setor')"],['rek','🏦','Pembuatan Rekening Baru',"openRek('baru')"]])+'</div></div>'}
 /* ===== Rekap harian petugas ===== */
 var rk={tgl:'',pet:null};
 function jam(ts){return isFinite(ts)?new Date(ts).toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'}):'-'}
