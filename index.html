@@ -537,7 +537,8 @@ function setNr(){var f=$('f_nr');if(!f)return;var r=rekAktif($('f_s').value);f.v
 function dsChg(){var x=db.kat.setor.find(function(z){return z.id===$('f_ds').value});if(x){$('f_ket').value=x.nama;$('f_jml').value=fmtN(x.jml)}setInfo()}
 function setInfo(){var e=$('f_info');if(!e||!$('f_j'))return;var m=numv('f_jml'),f=feeFor(m);
   if($('f_j').value!=='setor'||!m){e.innerHTML='';return}
-  e.innerHTML='<div class="msg">Siswa menyerahkan uang <b>'+rp(m+f.adm)+'</b>'+(f.adm?' (setoran '+rp(m)+' + biaya admin '+rp(f.adm)+')':'')+' \u2192 masuk Kas Cash. Kas Rekening berkurang <b>'+rp(m+f.bank)+'</b>'+(f.bank?' (setoran ke rekening siswa '+rp(m)+' + biaya bank '+rp(f.bank)+')':'')+'.'+(isA()&&(f.adm||f.bank)?' Untung biaya admin '+rp(f.adm-f.bank)+'.':'')+'</div>'}
+  e.innerHTML='<div style="border:2px solid var(--pri);background:var(--pri2);border-radius:14px;padding:12px 16px;text-align:center"><div style="font-size:13px;color:var(--mut)">Jumlah yang harus dibayar penyetor</div><div style="font-size:30px;font-weight:800;color:var(--pri);line-height:1.2">'+rp(m+f.adm)+'</div><div style="font-size:12px;color:var(--mut);margin-top:2px">'+(f.adm?'Setoran '+rp(m)+' + biaya admin '+rp(f.adm):'Tanpa biaya admin')+'</div></div>'+
+  (isA()?'<div style="font-size:11px;color:var(--mut);margin-top:6px;text-align:center">Kas Cash +'+rp(m+f.adm)+' \u00b7 Kas Rekening \u2212'+rp(m+f.bank)+(f.adm||f.bank?' \u00b7 Untung admin '+rp(f.adm-f.bank):'')+'</div>':'')}
 function note(m,e){$('fm').innerHTML='<div class="msg'+(e?' e':'')+'">'+m+'</div>'}
 function addTrx(){
   var j=$('f_j').value,jml=numv('f_jml'),sj=(j==='setor'||j==='tarik'),pet=$('f_p').value.trim(),sid=sj?$('f_s').value:null;
