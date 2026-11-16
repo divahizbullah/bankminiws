@@ -89,21 +89,25 @@ button.big.alt{background:rgba(255,255,255,.16);color:#fff;border:1px solid rgba
 <button class="p" onclick="doLogin()" style="width:100%">Masuk</button>
 <p class="mut" id="ld"></p></div></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-analytics-compat.js"></script>
 <script>
-// ISI DUA BARIS INI dari Supabase > Project Settings > API (kunci anon public aman dipakai di web karena dilindungi RLS)
-var SUPABASE_URL='https://lajpiocemskpwdbwemrk.supabase.co',SUPABASE_KEY='sb_publishable_ngPJ4UVEe8C8cohScHqsxw_ZVTinHZZ';
+// Konfigurasi Firebase (proyek bankminiws-43f13)
+var firebaseConfig={apiKey:"AIzaSyCBr0_1GPxqu5fM_an5dUmW8G84fzrac_o",authDomain:"bankminiws-43f13.firebaseapp.com",projectId:"bankminiws-43f13",storageBucket:"bankminiws-43f13.firebasestorage.app",messagingSenderId:"1030566006972",appId:"1:1030566006972:web:7b012402eb4a67b36d80b9",measurementId:"G-129KJ8EM5S"};
 var KAT=['Belanja Barang Dagangan','Operasional','Honor / Upah','ATK & Perlengkapan','Sosial / Kegiatan Sekolah','Lainnya'];
 var JN={setor:'Setoran Tabungan',tarik:'Penarikan Tabungan',masuk:'Pemasukan Koperasi',keluar:'Pengeluaran Koperasi'};
 var db={siswa:[],trx:[],set:{}},role=null,who='',wk='',lm='guru',st='kelas',sf='',lk='',tab='dash',msg='',flt={};
 if(!db.siswa)db.siswa=[];if(!db.trx)db.trx=[];if(!db.kelas)db.kelas=[];if(!db.imp)db.imp=[];if(!db.jual)db.jual=[];
 try{var r=sessionStorage.getItem('kop_role');if(r){var o=JSON.parse(r);if(o.r==='siswa'){role=o.r;who=o.n;wk=o.k||''}}}catch(e){}
-var sb=(window.supabase&&SUPABASE_URL.indexOf('ISI-')<0)?supabase.createClient(SUPABASE_URL,SUPABASE_KEY):null;
+var auth=null,fs=null,sb=null;try{firebase.initializeApp(firebaseConfig);auth=firebase.auth();fs=firebase.firestore();sb=fs;try{firebase.analytics()}catch(e){}}catch(e){console.error(e)}
+function unKey(n){return encodeURIComponent(String(n).toLowerCase().replace(/\s+/g,''))}
 var pq=Promise.resolve(),snap={kelas:{},siswa:{},trx:{},jual:{},imp:{}},kid={};
 function ids(a,f){var o={};a.forEach(function(x){o[f(x)]=1});return o}
 function kelasNames(){var o={};db.kelas.forEach(function(x){o[x]=1});db.siswa.forEach(function(s){o[s.kelas]=1});return Object.keys(o)}
 function save(){pq=pq.then(pushDiff)}
-async function fetchAll(t,ord){var out=[],f=0,n=1000;for(;;){var r=await sb.from(t).select('*').order(ord).order('id').range(f,f+n-1);if(r.error)throw r.error;out=out.concat(r.data);if(r.data.length<n)break;f+=n}return out}
+async function fetchAll(t,ord){var s=await fs.collection(t).get();var out=s.docs.map(function(d){var o=d.data();o.id=d.id;return o});out.sort(function(a,b){var x=a[ord]==null?'':a[ord],y=b[ord]==null?'':b[ord];return x<y?-1:x>y?1:(a.id<b.id?-1:1)});return out}
 async function safeAll(t,ord){try{return await fetchAll(t,ord)}catch(e){console.warn('Gagal memuat tabel '+t,e);window._loadErr=(window._loadErr?window._loadErr+'; ':'')+t+': '+(e.message||e);return[]}}
 async function loadAll(){
   window._loadErr='';
@@ -113,12 +117,14 @@ async function loadAll(){
   db.siswa=R[1].map(function(s){return{id:s.id,nama:s.nama,kelas:kn[s.kelas_id]||'Tanpa Kelas'}});
   db.trx=R[2].map(function(t){return{id:t.id,tgl:t.tanggal,jenis:t.jenis,sid:t.siswa_id,jml:Number(t.jumlah),ket:t.keterangan,kat:t.kategori||'',pet:t.petugas,ts:Date.parse(t.dibuat_pada)}});
   db.jual=R[3].map(function(j){return{id:j.id,ts:Date.parse(j.dibuat_pada),tgl:j.tanggal,g:j.grup,lay:j.layanan,jn:j.jenis_transaksi||'',no:j.no_tujuan,nm:j.nama_pelanggan||'',pb:j.pembeli||'lain',sid:j.siswa_id||'',dsk:Number(j.diskon||0),nom:Number(j.nominal),fee:Number(j.biaya_admin),ket:j.keterangan,pet:j.petugas}});
-  db.set={};db.adm=null;try{var ps=await sb.from('pengaturan').select('kunci,nilai').in('kunci',['diskon','admin']);(ps.data||[]).forEach(function(r){if(r.kunci==='diskon')db.set=r.nilai||{};else if(r.kunci==='admin')db.adm=r.nilai||null})}catch(e){db.set={};db.adm=null}
+  db.set={};db.adm=null;try{var ps=await fs.collection('pengaturan').get();ps.forEach(function(d){var n=d.data().nilai;if(d.id==='diskon')db.set=n||{};else if(d.id==='admin')db.adm=n||null})}catch(e){db.set={};db.adm=null}
   db.imp=R[4].map(function(i){return{ts:Date.parse(i.dibuat_pada),tgl:i.tanggal,kelas:i.kelas_nama,oleh:i.diimport_oleh,jml:i.jumlah,file:i.nama_file||''}});
   snap={kelas:ids(kelasNames(),function(x){return x}),siswa:ids(db.siswa,function(x){return x.id}),trx:ids(db.trx,function(x){return x.id}),jual:ids(db.jual,function(x){return x.id}),imp:ids(db.imp,function(x){return x.ts})};
 }
-async function ins(t,rows){if(!rows.length)return;var r=await sb.from(t).insert(rows);if(r.error)throw r.error}
-async function del(t,c,v){if(!v.length)return;var r=await sb.from(t).delete().in(c,v);if(r.error)throw r.error}
+async function wr(ops){for(var i=0;i<ops.length;i+=400){var b=fs.batch();ops.slice(i,i+400).forEach(function(o){var r=fs.collection(o.t).doc(o.id);if(o.del)b.delete(r);else b.set(r,o.d)});await b.commit()}}
+function clean(o){var r={};for(var k in o)if(o[k]!==undefined)r[k]=o[k];return r}
+async function ins(t,rows){var n=Date.now();await wr(rows.map(function(r,i){r=clean(r);var id=r.id||uid();delete r.id;if(!r.dibuat_pada)r.dibuat_pada=new Date(n+i).toISOString();return{t:t,id:id,d:r}}))}
+async function del(t,c,v){await wr(v.map(function(id){return{t:t,id:id,del:1}}))}
 async function pushDiff(){
   if(!sb)return;
   if(window._loadErr){toast('Simpan dibatalkan, data belum termuat lengkap: '+window._loadErr);return}
@@ -130,45 +136,43 @@ async function pushDiff(){
     nk.forEach(function(k){kid[k]=uid()});
     await ins('kelas',nk.map(function(k){return{id:kid[k],nama:k}}));
     await ins('siswa',ns.map(function(s){return{id:s.id,kelas_id:kid[s.kelas],nama:s.nama}}));
-    await ins('transaksi',nt.map(function(t){return{id:t.id,tanggal:t.tgl,jenis:t.jenis,siswa_id:t.sid||null,jumlah:t.jml,kategori:t.kat||null,keterangan:t.ket||'',petugas:t.pet}}));
-    await ins('penjualan',nj.map(function(j){return{id:j.id,tanggal:j.tgl,grup:j.g,layanan:j.lay,jenis_transaksi:j.jn||null,no_tujuan:j.no,nama_pelanggan:j.nm||null,pembeli:j.pb||'lain',siswa_id:j.sid||null,diskon:j.dsk||0,nominal:j.nom,biaya_admin:j.fee,keterangan:j.ket||'',petugas:j.pet}}));
+    await ins('transaksi',nt.map(function(t){return{id:t.id,tanggal:t.tgl,jenis:t.jenis,siswa_id:t.sid||null,jumlah:t.jml,kategori:t.kat||null,keterangan:t.ket||'',petugas:t.pet,dibuat_pada:new Date(t.ts||Date.now()).toISOString()}}));
+    await ins('penjualan',nj.map(function(j){return{id:j.id,tanggal:j.tgl,grup:j.g,layanan:j.lay,jenis_transaksi:j.jn||null,no_tujuan:j.no,nama_pelanggan:j.nm||null,pembeli:j.pb||'lain',siswa_id:j.sid||null,diskon:j.dsk||0,nominal:j.nom,biaya_admin:j.fee,keterangan:j.ket||'',petugas:j.pet,dibuat_pada:new Date(j.ts||Date.now()).toISOString()}}));
     await ins('import_siswa',ni.map(function(i){return{tanggal:i.tgl,kelas_id:kid[i.kelas]||null,kelas_nama:i.kelas,diimport_oleh:i.oleh,jumlah:i.jml,nama_file:i.file||null,dibuat_pada:new Date(i.ts).toISOString()}}));
-    await del('transaksi','id',dt);await del('penjualan','id',dj);await del('siswa','id',ds);await del('kelas','nama',dk);
+    await del('transaksi','id',dt);await del('penjualan','id',dj);await del('siswa','id',ds);await del('kelas','id',dk.map(function(k){return kid[k]}).filter(Boolean));
     nk.forEach(function(k){snap.kelas[k]=1});ns.forEach(function(x){snap.siswa[x.id]=1});nt.forEach(function(x){snap.trx[x.id]=1});nj.forEach(function(x){snap.jual[x.id]=1});ni.forEach(function(x){snap.imp[x.ts]=1});
     dk.forEach(function(k){delete snap.kelas[k];delete kid[k]});ds.forEach(function(x){delete snap.siswa[x]});dt.forEach(function(x){delete snap.trx[x]});dj.forEach(function(x){delete snap.jual[x]});
   }catch(e){toast('Gagal menyimpan ke database: '+(e.message||e));try{await loadAll();render()}catch(x){}}
 }
-async function guruProfil(id){var r=await sb.from('profil_guru').select('nama,peran').eq('id',id).maybeSingle();return r.data}
+async function guruProfil(id){try{var d=await fs.collection('profil_guru').doc(id).get();return d.exists?d.data():null}catch(e){return null}}
 var GURU_DOMAIN='bankmini.sch.id',gperan='',gemail='',gl=[];
 function guruEmail(v){v=String(v||'').trim();if(!v)return '';if(v.indexOf('@')>=0)return v.toLowerCase();return v.toLowerCase().replace(/\s+/g,'')+'@'+GURU_DOMAIN}
 async function resolveEmail(v){
   if(v.indexOf('@')>=0)return v.toLowerCase();
-  try{var q=await sb.rpc('email_guru',{p_username:v});if(!q.error&&q.data)return String(q.data).toLowerCase()}catch(x){}
+  try{var d=await fs.collection('username_guru').doc(unKey(v)).get();if(d.exists&&d.data().email)return String(d.data().email).toLowerCase()}catch(x){}
   return guruEmail(v)}
 async function loginGuru(){
   var e=$('le');function er(m){e.textContent=m;e.classList.remove('hide')}
-  if(!sb)return er('Supabase belum dikonfigurasi.');
+  if(!sb)return er('Firebase belum dimuat. Periksa koneksi internet.');
   var raw=$('lu').value.trim(),pw=$('lp').value;
   if(!raw)return er('Email / username wajib diisi.');
   if(!pw)return er('Password wajib diisi.');
-  var em=await resolveEmail(raw);
-  var r=await sb.auth.signInWithPassword({email:em,password:pw});
-  if(r.error){
-    var m=String(r.error.message||'');
-    if(/email not confirmed/i.test(m))return er('Akun belum dikonfirmasi. Di Supabase > Authentication > Users, klik akun > Confirm user.');
-    if(/invalid login/i.test(m))return er('Username/email atau password salah.');
-    return er('Login gagal: '+m);
-  }
-  var p;try{p=await guruProfil(r.data.user.id)}catch(x){p=null}
-  if(!p){await sb.auth.signOut();return er('Login berhasil, tetapi akun belum terdaftar sebagai guru (tabel profil_guru) atau policy RLS belum benar. UID: '+r.data.user.id)}
-  gperan=p.peran||'';gemail=r.data.user.email||em;
+  var em=await resolveEmail(raw),u;
+  try{u=(await auth.signInWithEmailAndPassword(em,pw)).user}catch(x){
+    var c=x.code||'';
+    if(/invalid-credential|wrong-password|user-not-found|invalid-email/.test(c))return er('Username/email atau password salah.');
+    if(/too-many/.test(c))return er('Terlalu banyak percobaan. Coba lagi beberapa menit lagi.');
+    return er('Login gagal: '+(x.message||c))}
+  var p=await guruProfil(u.uid);
+  if(!p){await auth.signOut();return er('Login berhasil, tetapi akun belum terdaftar sebagai guru (koleksi profil_guru). UID: '+u.uid)}
+  gperan=p.peran||'';gemail=u.email||em;
   try{await loadAll()}catch(x){}
   ok('admin',p.nama)}
 async function refresh(){if(!sb)return;await pq;try{await loadAll();render();toast('Data diperbarui')}catch(e){toast('Gagal memuat: '+(e.message||e))}}
+function authReady(){return new Promise(function(r){var u=auth.onAuthStateChanged(function(x){u();r(x)})})}
 async function boot(){
-  if(sb){try{await loadAll();if(window._loadErr)toast('Sebagian data gagal dimuat: '+window._loadErr);var g=await sb.auth.getSession(),u=g.data.session&&g.data.session.user;if(u){var p=await guruProfil(u.id);if(p){role='admin';who=p.nama;gperan=p.peran||'';gemail=u.email||''}}}catch(e){console.error(e)}}
+  if(sb){try{await loadAll();if(window._loadErr)toast('Sebagian data gagal dimuat: '+window._loadErr);var u=await authReady();if(u){var p=await guruProfil(u.uid);if(p){role='admin';who=p.nama;gperan=p.peran||'';gemail=u.email||''}}}catch(e){console.error(e)}}
   render()}
-
 function $(i){return document.getElementById(i)}
 function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
 function rp(n){return 'Rp '+(n||0).toLocaleString('id-ID')}
@@ -179,8 +183,8 @@ function sis(id){return db.siswa.find(function(x){return x.id===id})}
 function saldo(id){return db.trx.reduce(function(a,t){return t.sid===id?a+(t.jenis==='setor'?t.jml:t.jenis==='tarik'?-t.jml:0):a},0)}
 function kelasList(){var k={};db.kelas.forEach(function(x){k[x]=1});db.siswa.forEach(function(s){k[s.kelas]=1});return Object.keys(k).sort()}
 function opts(arr,sel,all){return (all?'<option value="">'+all+'</option>':'')+arr.map(function(x){return '<option'+(x===sel?' selected':'')+'>'+esc(x)+'</option>'}).join('')}
-function authBtn(){if(sb&&role==='admin')sb.auth.signOut();role=null;gperan='';gemail='';gl=[];who='';wk='';try{sessionStorage.removeItem('kop_role')}catch(e){};tab='dash';msg='';render()}
-function lt(m){lm=m;$('tg').classList.toggle('on',m==='guru');$('ts').classList.toggle('on',m==='siswa');$('pg').classList.toggle('hide',m!=='guru');$('ps').classList.toggle('hide',m!=='siswa');$('le').classList.add('hide');$('ld').textContent=m==='guru'?'Login guru dengan email atau username (nama guru).':'Daftar kelas dan nama diambil dari menu Administrasi yang diisi guru.';if(!sb)$('ld').textContent='Supabase belum dikonfigurasi: isi SUPABASE_URL dan SUPABASE_KEY di index.html.';if(m==='siswa'){fillLogin();if(sb&&!db.siswa.length&&!window._ld){window._ld=1;$('ld').textContent='Memuat data siswa...';loadAll().then(function(){fillLogin();if(!db.siswa.length)$('ld').textContent='Data siswa kosong.'+(window._loadErr?' Error: '+window._loadErr:' Minta guru mengisi data siswa.');else $('ld').textContent='Daftar kelas dan nama diambil dari menu Administrasi yang diisi guru.'}).catch(function(e){$('ld').textContent='Gagal memuat: '+(e.message||e)}).then(function(){window._ld=0})}}}
+function authBtn(){if(sb&&role==='admin')auth.signOut();role=null;gperan='';gemail='';gl=[];who='';wk='';try{sessionStorage.removeItem('kop_role')}catch(e){};tab='dash';msg='';render()}
+function lt(m){lm=m;$('tg').classList.toggle('on',m==='guru');$('ts').classList.toggle('on',m==='siswa');$('pg').classList.toggle('hide',m!=='guru');$('ps').classList.toggle('hide',m!=='siswa');$('le').classList.add('hide');$('ld').textContent=m==='guru'?'Login guru dengan email atau username (nama guru).':'Daftar kelas dan nama diambil dari menu Administrasi yang diisi guru.';if(!sb)$('ld').textContent='Firebase belum dimuat. Periksa koneksi internet.';if(m==='siswa'){fillLogin();if(sb&&!db.siswa.length&&!window._ld){window._ld=1;$('ld').textContent='Memuat data siswa...';loadAll().then(function(){fillLogin();if(!db.siswa.length)$('ld').textContent='Data siswa kosong.'+(window._loadErr?' Error: '+window._loadErr:' Minta guru mengisi data siswa.');else $('ld').textContent='Daftar kelas dan nama diambil dari menu Administrasi yang diisi guru.'}).catch(function(e){$('ld').textContent='Gagal memuat: '+(e.message||e)}).then(function(){window._ld=0})}}}
 function fillLogin(){var ks=kelasList(),k=$('sk'),cur=k.value;k.innerHTML=ks.length?opts(ks,cur):'<option value="">Belum ada data kelas</option>';var l=db.siswa.filter(function(x){return x.kelas===k.value}).sort(function(a,b){return a.nama.localeCompare(b.nama)});$('sn').innerHTML=l.length?l.map(function(x){return '<option value="'+x.id+'">'+esc(x.nama)+'</option>'}).join(''):'<option value="">Belum ada nama siswa</option>'}
 function ok(r,n,k){role=r;who=n;wk=k||'';try{sessionStorage.setItem('kop_role',JSON.stringify({r:r,n:n,k:wk}))}catch(e){};lg.classList.add('hide');$('lp').value='';tab='dash';msg='';render()}
 function doLogin(){var e=$('le');e.classList.add('hide');
@@ -253,8 +257,7 @@ function openAdm(){
 }
 async function saveAdm(){
   var v={};for(var g in GN){var a=numv('a_s_'+g),b=numv('a_l_'+g);if(a<0||b<0){$('am2').innerHTML='<div class="msg e">Nilai tidak boleh negatif.</div>';return}v[g]={siswa:a,lain:b}}
-  var r=await sb.from('pengaturan').upsert({kunci:'admin',nilai:v});
-  if(r.error){$('am2').innerHTML='<div class="msg e">'+esc(r.error.message)+'</div>';return}
+  try{await fs.collection('pengaturan').doc('admin').set({nilai:v})}catch(x){$('am2').innerHTML='<div class="msg e">'+esc(x.message)+'</div>';return}
   db.adm=v;closeModal();toast('Biaya admin disimpan');render()}
 function pbChg(){var sw=$('j_pb').value==='siswa';$('j_fee').value=fmtN(admFee(curSvc,$('j_pb').value));['j_sw','j_sw2'].forEach(function(id){$(id).classList.toggle('hide',!sw)});$('j_lw').classList.toggle('hide',sw);jtot()}
 function klChg(pick){var k=$('j_kl').value,l=db.siswa.filter(function(x){return x.kelas===k}).sort(function(a,b){return a.nama<b.nama?-1:1});
@@ -302,33 +305,40 @@ function aDiskon(){
 async function saveDiskon(){
   var v={};
   for(var g in GN){var n=parseFloat($('d_n_'+g).value)||0,t=$('d_t_'+g).value;if(n<0)return amsg('Nilai tidak boleh negatif.',1);if(t!=='rupiah'&&n>100)return amsg('Persen tidak boleh lebih dari 100.',1);v[g]={aktif:$('d_a_'+g).value==='1',tipe:t,nilai:n}}
-  var r=await sb.from('pengaturan').upsert({kunci:'diskon',nilai:v});
-  if(r.error)return amsg(esc(/pengaturan|schema cache|relation/i.test(r.error.message)?'Tabel pengaturan belum ada. Jalankan file tambah-diskon-siswa.sql di Supabase SQL Editor.':r.error.message),1);
+  try{await fs.collection('pengaturan').doc('diskon').set({nilai:v})}catch(x){return amsg(esc(x.message),1)}
   db.set=v;amsg('Pengaturan diskon disimpan.',0,1)}
 /* ===== Guru: pendaftaran & profil ===== */
-async function rpc(fn,args){var r=await sb.rpc(fn,args||{});if(r.error)throw r.error;return r.data}
-function errm(e){var m=String((e&&e.message)||e);if(/could not find the function|schema cache/i.test(m))return 'Fungsi database belum dipasang. Jalankan file tambah-fitur-guru.sql di Supabase SQL Editor.';return m}
-async function loadGuru(){try{gl=await rpc('list_guru')}catch(e){gl=[];msg='<div class="msg e">'+esc(errm(e))+'</div>'}if(tab==='admin'&&st==='guru')render()}
+
+function errm(e){return String((e&&e.message)||e)}
+async function loadGuru(){try{var s=await fs.collection('profil_guru').get();gl=s.docs.map(function(d){var o=d.data();o.id=d.id;return o}).sort(function(a,b){return String(a.nama).localeCompare(String(b.nama))})}catch(e){gl=[];msg='<div class="msg e">'+esc(errm(e))+'</div>'}if(tab==='admin'&&st==='guru')render()}
 function aGuru(){
   return '<div class="card"><h2>Daftarkan Guru</h2><div class="grid2"><div><label>Nama (jadi username)</label><input id="g_n" placeholder="mis. budi"></div><div><label>Email</label><input id="g_e" type="email" autocapitalize="none" placeholder="nama@email.com"></div><div><label>Password (min. 6 karakter)</label><input id="g_p" type="password" autocomplete="new-password"></div><div><label>Peran</label><select id="g_r"><option value="guru">Guru</option><option value="admin">Admin (boleh mendaftarkan guru)</option></select></div></div><br><button class="p" onclick="addGuru()">Daftarkan Guru</button><p class="mut">Guru masuk memakai email atau nama di atas sebagai username, ditambah password.</p></div>'+
-  '<div class="card"><h2>Daftar Guru ('+gl.length+')</h2><div class="tw"><table><tr><th>Nama / Username</th><th>Email</th><th>Peran</th><th></th></tr>'+(gl.map(function(g){return '<tr><td>'+esc(g.nama)+'</td><td>'+esc(g.email)+'</td><td>'+esc(g.peran)+'</td><td><button onclick="resetGuru(\''+g.id+'\')">Reset Password</button> '+(g.email===gemail?'':'<button class="d" onclick="delGuru(\''+g.id+'\')">Hapus</button>')+'</td></tr>'}).join('')||'<tr><td colspan="4" class="mut">Belum ada data.</td></tr>')+'</table></div></div>';
+  '<div class="card"><h2>Daftar Guru ('+gl.length+')</h2><div class="tw"><table><tr><th>Nama / Username</th><th>Email</th><th>Peran</th><th></th></tr>'+(gl.map(function(g){return '<tr><td>'+esc(g.nama)+'</td><td>'+esc(g.email)+'</td><td>'+esc(g.peran)+'</td><td><button onclick="resetGuru(\''+g.id+'\')">Kirim Email Reset</button> '+(g.email===gemail?'':'<button class="d" onclick="delGuru(\''+g.id+'\')">Hapus</button>')+'</td></tr>'}).join('')||'<tr><td colspan="4" class="mut">Belum ada data.</td></tr>')+'</table></div></div>';
 }
+function secApp(){try{return firebase.app('sec')}catch(e){return firebase.initializeApp(firebaseConfig,'sec')}}
 async function addGuru(){
   var n=$('g_n').value.trim(),e=$('g_e').value.trim().toLowerCase(),p=$('g_p').value,r=$('g_r').value;
   if(!n)return amsg('Nama wajib diisi.',1);
   if(n.indexOf('@')>=0)return amsg('Nama tidak boleh memakai tanda @.',1);
   if(!/^\S+@\S+\.\S+$/.test(e))return amsg('Email tidak valid.',1);
   if(p.length<6)return amsg('Password minimal 6 karakter.',1);
-  try{await rpc('daftar_guru',{p_email:e,p_nama:n,p_password:p,p_peran:r})}catch(x){return amsg(esc(errm(x)),1)}
+  var sa=secApp().auth(),nu;
+  try{var ex=await fs.collection('username_guru').doc(unKey(n)).get();if(ex.exists)return amsg('Nama/username sudah dipakai.',1)}catch(x){return amsg(esc(errm(x)),1)}
+  try{nu=(await sa.createUserWithEmailAndPassword(e,p)).user.uid}catch(x){
+    if(x.code==='auth/email-already-in-use'){try{nu=(await sa.signInWithEmailAndPassword(e,p)).user.uid}catch(y){return amsg('Email ini sudah punya akun Firebase dengan password lain. Pakai password lama akun itu, atau hapus akunnya di Firebase Console > Authentication.',1)}}
+    else return amsg(esc(errm(x)),1)}
+  try{await sa.signOut()}catch(x){}
+  try{await fs.collection('profil_guru').doc(nu).set({nama:n,email:e,peran:r});await fs.collection('username_guru').doc(unKey(n)).set({email:e,uid:nu})}catch(x){return amsg(esc(errm(x)),1)}
   msg='<div class="msg">Guru '+esc(n)+' berhasil didaftarkan. Login dengan username "'+esc(n)+'" atau email '+esc(e)+'.</div>';
   await loadGuru();render();window.scrollTo(0,0)}
 async function resetGuru(id){
-  var p=prompt('Password baru untuk guru ini (min. 6 karakter):');if(p===null)return;
-  if(p.length<6)return toast('Password minimal 6 karakter.');
-  try{await rpc('reset_password_guru',{p_id:id,p_password:p});toast('Password guru diperbarui')}catch(x){toast(errm(x))}}
+  var g=gl.find(function(x){return x.id===id});if(!g)return;
+  if(!confirm('Kirim email reset password ke '+g.email+'?'))return;
+  try{await auth.sendPasswordResetEmail(g.email);toast('Email reset password terkirim ke '+g.email)}catch(x){toast(errm(x))}}
 async function delGuru(id){
-  if(!confirm('Hapus akun guru ini? Guru tidak bisa login lagi.'))return;
-  try{await rpc('hapus_guru',{p_id:id});toast('Guru dihapus');await loadGuru()}catch(x){toast(errm(x))}}
+  var g=gl.find(function(x){return x.id===id});if(!g)return;
+  if(!confirm('Hapus akses guru ini? Guru tidak bisa login lagi.'))return;
+  try{await fs.collection('profil_guru').doc(id).delete();await fs.collection('username_guru').doc(unKey(g.nama)).delete();toast('Guru dihapus');await loadGuru()}catch(x){toast(errm(x))}}
 function vProfil(){
   if(!isA())return vDash();
   return '<div class="card"><h2>Profil Saya</h2><div class="grid2"><div><label>Nama / Username</label><input id="pf_n" value="'+esc(who)+'"></div><div><label>Email</label><input value="'+esc(gemail)+'" readonly></div><div><label>Peran</label><input value="'+esc(gperan)+'" readonly></div></div><br><button class="p" onclick="saveNama()">Simpan Nama</button><div id="pm1"></div></div>'+
@@ -339,17 +349,23 @@ async function saveNama(){
   var n=$('pf_n').value.trim();
   if(!n)return pmsg('pm1','Nama wajib diisi.',1);
   if(n.indexOf('@')>=0)return pmsg('pm1','Nama tidak boleh memakai tanda @.',1);
-  try{await rpc('ubah_nama_saya',{p_nama:n})}catch(x){return pmsg('pm1',esc(errm(x)),1)}
+  try{
+    var uu=auth.currentUser;if(!uu)throw new Error('Sesi habis, silakan login ulang.');
+    var ex=await fs.collection('username_guru').doc(unKey(n)).get();
+    if(ex.exists&&ex.data().uid!==uu.uid)return pmsg('pm1','Nama sudah dipakai guru lain.',1);
+    await fs.collection('profil_guru').doc(uu.uid).update({nama:n});
+    await fs.collection('username_guru').doc(unKey(n)).set({email:uu.email,uid:uu.uid});
+    if(unKey(who)!==unKey(n))await fs.collection('username_guru').doc(unKey(who)).delete().catch(function(){});
+  }catch(x){return pmsg('pm1',esc(errm(x)),1)}
   who=n;render();toast('Nama diperbarui. Username login sekarang: '+n)}
 async function savePw(){
   var o=$('pw_o').value,n=$('pw_n').value,r=$('pw_r').value;
   if(!o)return pmsg('pm2','Password lama wajib diisi.',1);
   if(n.length<6)return pmsg('pm2','Password baru minimal 6 karakter.',1);
   if(n!==r)return pmsg('pm2','Ulangi password tidak sama.',1);
-  var c=await sb.auth.signInWithPassword({email:gemail,password:o});
-  if(c.error)return pmsg('pm2','Password lama salah.',1);
-  var u=await sb.auth.updateUser({password:n});
-  if(u.error)return pmsg('pm2',esc(u.error.message),1);
+  var uu=auth.currentUser;if(!uu)return pmsg('pm2','Sesi habis, silakan login ulang.',1);
+  try{await uu.reauthenticateWithCredential(firebase.auth.EmailAuthProvider.credential(gemail,o))}catch(x){return pmsg('pm2','Password lama salah.',1)}
+  try{await uu.updatePassword(n)}catch(x){return pmsg('pm2',esc(errm(x)),1)}
   ['pw_o','pw_n','pw_r'].forEach(function(i){$(i).value=''});
   pmsg('pm2','Password berhasil diganti.')}
 function openModal(h){$('mc').innerHTML=h;$('md').classList.add('show')}
