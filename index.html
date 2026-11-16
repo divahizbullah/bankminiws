@@ -106,6 +106,14 @@ th{position:sticky;top:0;background:var(--card)}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
 .svb.dis{opacity:.5}.svb.big{padding:24px 10px;font-size:15px}
 
+/* ===== Menu berkategori ===== */
+.side nav button.gh{justify-content:space-between;color:var(--tx);font-weight:700;margin-top:2px}
+.side nav button.gh .ch{font-size:11px;opacity:.6;transition:transform .2s}
+.side nav button.gh.open .ch{transform:rotate(90deg)}
+.side nav button.gh.has{background:var(--pri2)}
+.side nav .gb{display:none;flex-direction:column;gap:2px;margin:0 0 4px 14px;padding-left:8px;border-left:2px solid var(--bd)}
+.side nav .gb.open{display:flex}
+.side nav .gb button{padding:9px 10px;font-size:14px}
 /* ===== Kasir penuh ===== */
 .ks{display:flex;flex-direction:column;gap:14px;min-height:calc(100vh - 110px)}
 .ksh{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between}
@@ -254,12 +262,18 @@ function ok(r,n,k){role=r;who=n;wk=k||'';rk.tgl=today();rk.pet=null;try{sessionS
 function doLogin(){var e=$('le');e.classList.add('hide');
   if(lm==='guru'){loginGuru()}
   else{var s=sis($('sn').value);if(s&&!okLogin(s))s=null;if(!s){e.textContent='Pilih kelas dan nama siswa terlebih dahulu.';e.classList.remove('hide');return}ok('siswa',s.nama,s.kelas)}}
+var gopen={};function togG(n){gopen[n]=!gopen[n];render()}
 function setTab(t){tab=t;msg='';tgl(1);render();window.scrollTo(0,0)}
 function render(){
   if(!role){lg.classList.remove('hide');$('rb').textContent='Belum masuk';$('lb').classList.add('hide');$('nav').innerHTML='';$('v').innerHTML='';lt(lm);return}
   $('lb').classList.remove('hide');$('rb').textContent=isA()?'Guru: '+who:(pgs?'Petugas: '+pgs:'Siswa: '+who+' ('+wk+')');$('lb').textContent='Keluar';
-  var cm=[['jual','Penjualan','🛒'],['bayar','Pembayaran','💳'],['digital','Layanan Digital','📲']];var tabs=isA()?[['dash','Dashboard','📊'],['rekening','Rekening','🏦'],['kas','Kas','💰'],['db','Database','🗃️']].concat(cm,[['riwayat','Riwayat','🧾'],['admin','Administrasi','⚙️'],['laporan','Laporan','📑'],['lapjual','Laporan Jualan','📈'],['profil','Profil','👤']]):[['dash','Kasir','🧾'],['kas','Kas','💰']].concat(cm,[['rekap','Rekap Harian','📑']]);
-  $('nav').innerHTML=tabs.map(function(t){return '<button class="'+(tab===t[0]?'on':'')+'" onclick="setTab(\''+t[0]+'\')"><span>'+t[2]+'</span>'+t[1]+'</button>'}).join('');
+  var T={dash:['dash','Dashboard','📊'],kasir:['dash','Kasir','🧾'],rek:['rekening','Rekening','🏦'],kas:['kas','Kas','💰'],dbm:['db','Database','🗃️'],jual:['jual','Penjualan','🛒'],bayar:['bayar','Pembayaran','💳'],digital:['digital','Layanan Digital','📲'],riw:['riwayat','Riwayat','🧾'],adm:['admin','Administrasi','⚙️'],lap:['laporan','Laporan Setoran','📑'],lapj:['lapjual','Laporan Untung','📈'],prof:['profil','Profil','👤'],rekap:['rekap','Rekap Harian','📑']};
+  var G=isA()?[T.dash,['Layanan','🛎️',[T.rek,T.jual,T.bayar,T.digital]],['Keuangan','💼',[T.kas,T.riw,T.lap,T.lapj]],['Pengaturan','⚙️',[T.dbm,T.adm,T.prof]]]:[T.kasir,T.kas,['Layanan','🛎️',[T.jual,T.bayar,T.digital]],T.rekap];
+  var bt=function(t,sub){return '<button class="'+(tab===t[0]?'on':'')+'" onclick="setTab(\''+t[0]+'\')"><span>'+t[2]+'</span>'+t[1]+'</button>'};
+  $('nav').innerHTML=G.map(function(g,i){
+    if(typeof g[1]==='string'&&g[2]&&typeof g[2]==='string')return bt(g);
+    var has=g[2].some(function(t){return t[0]===tab}),op=has||gopen[g[0]];
+    return '<button class="gh'+(op?' open':'')+(has?' has':'')+'" onclick="togG(\''+g[0]+'\')"><span style="display:flex;gap:10px;align-items:center"><span>'+g[1]+'</span>'+g[0]+'</span><span class="ch">\u25b6</span></button><div class="gb'+(op?' open':'')+'">'+g[2].map(bt).join('')+'</div>'}).join('');
   var f={dash:vDash,riwayat:vRiwayat,siswa:vSiswa,admin:vAdmin,laporan:vLaporan,lapjual:vLapJual,rekening:vRekening,kas:vKas,db:vDb,rekap:vRekap,profil:vProfil,jual:function(){return vSvc('jual')},bayar:function(){return vSvc('bayar')},digital:function(){return vSvc('digital')}}[tab]||vDash;
   $('v').innerHTML=f();if(tab==='input')fillSiswa();
 }
