@@ -224,7 +224,7 @@ function opts(arr,sel,all){return (all?'<option value="">'+all+'</option>':'')+a
 function authBtn(){if(sb&&role==='admin')auth.signOut();role=null;gperan='';gemail='';gl=[];who='';wk='';pgs='';try{sessionStorage.removeItem('kop_role');sessionStorage.removeItem('kop_pgs')}catch(e){};tab='dash';msg='';render()}
 function lt(m){lm=m;$('tg').classList.toggle('on',m==='guru');$('ts').classList.toggle('on',m==='siswa');$('pg').classList.toggle('hide',m!=='guru');$('ps').classList.toggle('hide',m!=='siswa');$('le').classList.add('hide');$('ld').textContent=m==='guru'?'Login guru dengan email atau username (nama guru).':'Daftar kelas dan nama diambil dari menu Administrasi yang diisi guru.';if(!sb)$('ld').textContent='Firebase belum dimuat. Periksa koneksi internet.';if(m==='siswa'){fillLogin();if(sb&&!db.siswa.length&&!window._ld){window._ld=1;$('ld').textContent='Memuat data siswa...';loadAll().then(function(){fillLogin();if(!db.siswa.length)$('ld').textContent='Data siswa kosong.'+(window._loadErr?' Error: '+window._loadErr:' Minta guru mengisi data siswa.');else $('ld').textContent='Daftar kelas dan nama diambil dari menu Administrasi yang diisi guru.'}).catch(function(e){$('ld').textContent='Gagal memuat: '+(e.message||e)}).then(function(){window._ld=0})}}}
 function fillLogin(){var ks=kelasList().filter(function(x){return !db.ptg||x===db.ptg.kelas}),k=$('sk'),cur=k.value;k.innerHTML=ks.length?opts(ks,cur):'<option value="">Belum ada data kelas</option>';var l=db.siswa.filter(function(x){return x.kelas===k.value&&okLogin(x)}).sort(function(a,b){return a.nama.localeCompare(b.nama)});$('sn').innerHTML=l.length?l.map(function(x){return '<option value="'+x.id+'">'+esc(x.nama)+'</option>'}).join(''):'<option value="">Belum ada nama siswa</option>'}
-function ok(r,n,k){role=r;who=n;wk=k||'';try{sessionStorage.setItem('kop_role',JSON.stringify({r:r,n:n,k:wk}))}catch(e){};lg.classList.add('hide');$('lp').value='';tab='dash';msg='';render()}
+function ok(r,n,k){role=r;who=n;wk=k||'';rk.tgl=today();rk.pet=null;try{sessionStorage.setItem('kop_role',JSON.stringify({r:r,n:n,k:wk}))}catch(e){};lg.classList.add('hide');$('lp').value='';tab='dash';msg='';render()}
 function doLogin(){var e=$('le');e.classList.add('hide');
   if(lm==='guru'){loginGuru()}
   else{var s=sis($('sn').value);if(s&&!okLogin(s))s=null;if(!s){e.textContent='Pilih kelas dan nama siswa terlebih dahulu.';e.classList.remove('hide');return}ok('siswa',s.nama,s.kelas)}}
@@ -232,9 +232,9 @@ function setTab(t){tab=t;msg='';tgl(1);render();window.scrollTo(0,0)}
 function render(){
   if(!role){lg.classList.remove('hide');$('rb').textContent='Belum masuk';$('lb').classList.add('hide');$('nav').innerHTML='';$('v').innerHTML='';lt(lm);return}
   $('lb').classList.remove('hide');$('rb').textContent=isA()?'Guru: '+who:'Siswa: '+who+' ('+wk+')';$('lb').textContent='Keluar';
-  var cm=[['jual','Penjualan','🛒'],['bayar','Pembayaran','💳'],['digital','Layanan Digital','📲']];var tabs=isA()?[['dash','Dashboard','📊']].concat(cm,[['riwayat','Riwayat','🧾'],['admin','Administrasi','⚙️'],['laporan','Laporan','📑'],['lapjual','Laporan Jualan','📈'],['profil','Profil','👤']]):[['dash','Kasir','🧾']].concat(cm);
+  var cm=[['jual','Penjualan','🛒'],['bayar','Pembayaran','💳'],['digital','Layanan Digital','📲']];var tabs=isA()?[['dash','Dashboard','📊']].concat(cm,[['riwayat','Riwayat','🧾'],['admin','Administrasi','⚙️'],['laporan','Laporan','📑'],['lapjual','Laporan Jualan','📈'],['profil','Profil','👤']]):[['dash','Kasir','🧾']].concat(cm,[['rekap','Rekap Harian','📑']]);
   $('nav').innerHTML=tabs.map(function(t){return '<button class="'+(tab===t[0]?'on':'')+'" onclick="setTab(\''+t[0]+'\')"><span>'+t[2]+'</span>'+t[1]+'</button>'}).join('');
-  var f={dash:vDash,riwayat:vRiwayat,siswa:vSiswa,admin:vAdmin,laporan:vLaporan,lapjual:vLapJual,profil:vProfil,jual:function(){return vSvc('jual')},bayar:function(){return vSvc('bayar')},digital:function(){return vSvc('digital')}}[tab]||vDash;
+  var f={dash:vDash,riwayat:vRiwayat,siswa:vSiswa,admin:vAdmin,laporan:vLaporan,lapjual:vLapJual,rekap:vRekap,profil:vProfil,jual:function(){return vSvc('jual')},bayar:function(){return vSvc('bayar')},digital:function(){return vSvc('digital')}}[tab]||vDash;
   $('v').innerHTML=f();if(tab==='input')fillSiswa();
 }
 function sums(){var s={tab:0,masuk:0,keluar:0,setor:0,tarik:0};db.trx.forEach(function(t){if(t.jenis==='setor')s.setor+=t.jml;else if(t.jenis==='tarik')s.tarik+=t.jml;else s[t.jenis]+=t.jml});s.tab=s.setor-s.tarik;s.kas=s.tab+s.masuk-s.keluar;return s}
@@ -594,6 +594,34 @@ function vKasir(){
   var d=pgs?'':' dis',b=function(a){return a.map(function(x){return '<button class="svb big'+d+'" onclick="'+x[3]+'"><i>'+x[1]+'</i>'+x[2]+'</button>'}).join('')};
   return pgBox()+'<div class="card"><h2>Tabungan & Kas</h2><div class="svc">'+b([['setor','＋','Setor Uang',"openTrx('setor')"],['tarik','📤','Tarik Tabungan',"openTrx('tarik')"],['keluar','🧾','Pengeluaran',"openTrx('keluar')"]])+'</div></div>'+
   '<div class="card"><h2>Layanan</h2><div class="svc">'+b([['jual','🛒','Penjualan',"setTab('jual')"],['digital','📲','Layanan Digital',"setTab('digital')"],['bayar','💳','Pembayaran',"setTab('bayar')"]])+'</div></div>'}
+/* ===== Rekap harian petugas ===== */
+var rk={tgl:'',pet:null};
+function jam(ts){return isFinite(ts)?new Date(ts).toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'}):'-'}
+function rkData(){
+  if(!rk.tgl)rk.tgl=today();var pf=rk.pet===null?(pgs||'*'):rk.pet,pets={};
+  db.trx.concat(db.jual).forEach(function(x){if(x.tgl===rk.tgl&&x.pet)pets[x.pet]=1});
+  var ok2=function(x){return x.tgl===rk.tgl&&(pf==='*'||x.pet===pf)};
+  var T=db.trx.filter(ok2).sort(function(a,b){return a.ts-b.ts}),J=db.jual.filter(ok2).sort(function(a,b){return a.ts-b.ts});
+  var t={setor:0,tarik:0,masuk:0,keluar:0},jg={jual:[0,0],bayar:[0,0],digital:[0,0]},jt=0;
+  T.forEach(function(x){t[x.jenis]+=x.jml});
+  J.forEach(function(x){var v=x.nom+x.fee-(x.dsk||0);if(jg[x.g]){jg[x.g][0]++;jg[x.g][1]+=v}jt+=v});
+  var masuk=t.setor+t.masuk+jt,keluar=t.tarik+t.keluar;
+  return{pf:pf,pets:Object.keys(pets).sort(),T:T,J:J,t:t,jg:jg,jt:jt,masuk:masuk,keluar:keluar}}
+function vRekap(){
+  var d=rkData(),t=d.t,sn=function(x){var z=sis(x.sid);return z?z.nama+' ('+z.kelas+')':'-'};
+  return '<div class="card"><h2>Rekap Harian</h2><div class="grid2"><div><label>Tanggal (hari login)</label><input value="'+esc(rk.tgl)+'" readonly></div><div><label>Petugas</label><select onchange="rk.pet=this.value;render()"><option value="*"'+(d.pf==='*'?' selected':'')+'>Semua petugas</option>'+d.pets.map(function(n){return '<option'+(n===d.pf?' selected':'')+'>'+esc(n)+'</option>'}).join('')+(d.pf!=='*'&&d.pets.indexOf(d.pf)<0?'<option selected>'+esc(d.pf)+'</option>':'')+'</select></div></div><br><button class="p" onclick="render()">Perbarui Rekap</button> <button onclick="window.print()">Cetak</button> <button onclick="rkXls()">Unduh Excel</button></div>'+
+  '<div class="sg">'+sc('📥','Setoran',rp(t.setor))+sc('📤','Penarikan',rp(t.tarik))+sc('🧾','Pengeluaran',rp(t.keluar))+sc('🛒','Penjualan',rp(d.jg.jual[1]))+sc('💳','Pembayaran',rp(d.jg.bayar[1]))+sc('📲','Layanan Digital',rp(d.jg.digital[1]))+'</div>'+
+  '<div class="card" style="margin-top:14px"><h2>Ringkasan Kas Hari Ini</h2><table><tr><td>Uang diterima (setoran + pemasukan + layanan)</td><td class="r in">'+rp(d.masuk)+'</td></tr><tr><td>Uang keluar (penarikan + pengeluaran)</td><td class="r out">'+rp(d.keluar)+'</td></tr><tr><td><b>Selisih</b></td><td class="r"><b>'+rp(d.masuk-d.keluar)+'</b></td></tr></table></div>'+
+  '<div class="card"><h2>Transaksi Tabungan & Kas ('+d.T.length+')</h2>'+(d.T.length?'<div class="tw"><table><tr><th>Jam</th><th>Jenis</th><th>Siswa</th><th class="r">Jumlah</th><th>Keterangan</th><th>Petugas</th></tr>'+d.T.map(function(x){return '<tr><td>'+jam(x.ts)+'</td><td>'+esc(JN[x.jenis]||x.jenis)+'</td><td>'+esc(sn(x))+'</td><td class="r">'+rp(x.jml)+'</td><td>'+esc(x.ket||'')+'</td><td>'+esc(x.pet)+'</td></tr>'}).join('')+'</table></div>':'<p class="mut">Belum ada input hari ini.</p>')+'</div>'+
+  '<div class="card"><h2>Penjualan, Pembayaran & Layanan Digital ('+d.J.length+')</h2>'+(d.J.length?'<div class="tw"><table><tr><th>Jam</th><th>Menu</th><th>Layanan</th><th>Tujuan</th><th>Pembeli</th><th class="r">Total</th><th>Petugas</th></tr>'+d.J.map(function(x){return '<tr><td>'+jam(x.ts)+'</td><td>'+esc(GN[x.g]||x.g)+'</td><td>'+esc(x.lay+(x.jn?' · '+x.jn:''))+'</td><td>'+esc(x.no)+'</td><td>'+esc(pel(x))+'</td><td class="r">'+rp(x.nom+x.fee-(x.dsk||0))+'</td><td>'+esc(x.pet)+'</td></tr>'}).join('')+'</table></div>':'<p class="mut">Belum ada input hari ini.</p>')+'</div>'}
+function rkXls(){
+  if(!window.XLSX)return toast('Pembaca Excel belum termuat (perlu internet).');
+  var d=rkData(),t=d.t,wb=XLSX.utils.book_new(),sn=function(x){var z=sis(x.sid);return z?z.nama+' ('+z.kelas+')':''};
+  var a=[['Rekap Harian',rk.tgl],['Petugas',d.pf==='*'?'Semua':d.pf],[],['Setoran',t.setor],['Penarikan',t.tarik],['Pengeluaran',t.keluar],['Pemasukan koperasi',t.masuk],['Penjualan',d.jg.jual[1]],['Pembayaran',d.jg.bayar[1]],['Layanan Digital',d.jg.digital[1]],[],['Uang diterima',d.masuk],['Uang keluar',d.keluar],['Selisih',d.masuk-d.keluar]];
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(a),'Ringkasan');
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['Jam','Jenis','Siswa','Jumlah','Keterangan','Petugas']].concat(d.T.map(function(x){return[jam(x.ts),JN[x.jenis]||x.jenis,sn(x),x.jml,x.ket||'',x.pet]}))),'Tabungan & Kas');
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['Jam','Menu','Layanan','Tujuan','Pembeli','Total','Petugas']].concat(d.J.map(function(x){return[jam(x.ts),GN[x.g]||x.g,x.lay+(x.jn?' - '+x.jn:''),x.no,x.nm,x.nom+x.fee-(x.dsk||0),x.pet]}))),'Layanan');
+  XLSX.writeFile(wb,'rekap-'+rk.tgl+(d.pf==='*'?'':'-'+d.pf.replace(/\s+/g,'_'))+'.xlsx')}
 function eselAll(id,sel){return '<select id="'+id+'"><option value="">Pilih kelas</option><option value="*"'+(sel==='*'?' selected':'')+'>⭐ Semua kelas (dari kolom Kelas di Excel)</option>'+opts(kelasList(),sel)+'</select>'}
 function finAll(rows,by,fn){
   var hi=-1,cn=-1,ck=-1,cw=-1,i;
