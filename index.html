@@ -166,7 +166,7 @@ th{position:sticky;top:0;background:var(--card)}
 var firebaseConfig={apiKey:"AIzaSyCBr0_1GPxqu5fM_an5dUmW8G84fzrac_o",authDomain:"bankminiws-43f13.firebaseapp.com",projectId:"bankminiws-43f13",storageBucket:"bankminiws-43f13.firebasestorage.app",messagingSenderId:"1030566006972",appId:"1:1030566006972:web:7b012402eb4a67b36d80b9",measurementId:"G-129KJ8EM5S"};
 var KAT=['Belanja Barang Dagangan','Operasional','Honor / Upah','ATK & Perlengkapan','Sosial / Kegiatan Sekolah','Lainnya'];
 var JN={setor:'Setoran Tabungan',tarik:'Penarikan Tabungan',masuk:'Pemasukan Koperasi',keluar:'Pengeluaran Koperasi'};
-var db={siswa:[],trx:[],set:{},wali:{},ptg:null,rek:[],kom:0,kat:{items:[],setor:[],cfg:{ambang:50000,bank:0,cust:0}}},role=null,who='',wk='',lm='guru',st='kelas',sf='',lk='',tab='dash',msg='',flt={};
+var db={siswa:[],trx:[],set:{},wali:{},ptg:null,rek:[],kom:0,kat:{items:[],setor:[],cfg:{ambang:50000,tiers:[]}}},role=null,who='',wk='',lm='guru',st='kelas',sf='',lk='',tab='dash',msg='',flt={};
 if(!db.siswa)db.siswa=[];if(!db.trx)db.trx=[];if(!db.kelas)db.kelas=[];if(!db.imp)db.imp=[];if(!db.jual)db.jual=[];
 try{var r=sessionStorage.getItem('kop_role');if(r){var o=JSON.parse(r);if(o.r==='siswa'){role=o.r;who=o.n;wk=o.k||''}}}catch(e){}
 var auth=null,fs=null,sb=null;try{firebase.initializeApp(firebaseConfig);auth=firebase.auth();fs=firebase.firestore();sb=fs;try{firebase.analytics()}catch(e){}}catch(e){console.error(e)}
@@ -387,7 +387,8 @@ function csvJual(){var rows=[['Tanggal','Kategori','Layanan','Provider','Barang'
   var a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['﻿'+c],{type:'text/csv'}));a.download='laporan-pemasukan-untung.csv';a.click()}
 
 /* ===== Database barang & setoran ===== */
-function katDef(){return{items:[],setor:[],cfg:{ambang:50000,bank:0,cust:0}}}
+function katDef(){return{items:[],setor:[],cfg:{ambang:50000,tiers:[]}}}
+function feeFor(j){var c=db.kat.cfg,t=(c.tiers||[]).slice().sort(function(a,b){return a.max-b.max});if(!(j>c.ambang)||!t.length)return{adm:0,bank:0};var x=t.find(function(z){return j<=z.max})||t[t.length-1];return{adm:x.cust||0,bank:x.bank||0}}
 async function saveKat(bk){try{await fs.collection('pengaturan').doc('katalog').set({nilai:db.kat})}catch(x){if(bk)db.kat=JSON.parse(bk);toast('Gagal menyimpan: '+errm(x));return false}return true}
 function katFor(g,lay){return db.kat.items.filter(function(x){return x.g===g&&x.lay===lay}).sort(function(a,b){return (a.prov||'').localeCompare(b.prov||'')||a.nom-b.nom||a.nama.localeCompare(b.nama)})}
 function selBrg(){var e=$('j_br');return e&&e.value?(db.kat.items.find(function(x){return x.id===e.value})||null):null}
@@ -412,7 +413,9 @@ function vDb(){
   (its.length?'<div class="tw"><table><tr><th>Layanan</th><th>Provider</th><th>Barang</th><th class="r">Nominal (Rp)</th><th class="r">Modal (Rp)</th><th class="r">Selisih</th><th></th></tr>'+its.map(function(x){return '<tr><td>'+esc(GN[x.g]+' · '+x.lay)+'</td><td>'+esc(x.prov||'-')+'</td><td>'+esc(x.nama)+'</td><td class="r">'+inp(x.id,'nom',x.nom)+'</td><td class="r">'+inp(x.id,'modal',x.modal)+'</td><td class="r in" id="u_'+x.id+'">'+rp(x.nom-x.modal)+'</td><td><button class="d" onclick="delBrg(\''+x.id+'\')">Hapus</button></td></tr>'}).join('')+'</table></div>':'<p class="mut">Belum ada barang. Tambahkan di atas.</p>')+'</div>'+
   '<div class="cols"><div class="card"><h2>Deskripsi Setoran</h2><p class="mut" style="margin-top:-6px">Pilihan nama dan angka yang muncul di form Setor Uang.</p><div class="grid2"><div><label>Nama / deskripsi</label><input id="s_n" placeholder="mis. Tabungan mingguan"></div><div><label>Jumlah (Rp)</label><input id="s_j" inputmode="numeric" autocomplete="off" placeholder="0" oninput="fmtIn(this)"></div></div><br><button class="p" onclick="addSet()">Tambah</button><br><br>'+
   (K.setor.length?'<div class="tw"><table><tr><th>Deskripsi</th><th class="r">Jumlah</th><th></th></tr>'+K.setor.slice().sort(function(a,b){return a.jml-b.jml}).map(function(x){return '<tr><td>'+esc(x.nama)+'</td><td class="r">'+rp(x.jml)+'</td><td><button class="d" onclick="delSet(\''+x.id+'\')">Hapus</button></td></tr>'}).join('')+'</table></div>':'<p class="mut">Belum ada deskripsi setoran.</p>')+'</div>'+
-  '<div class="card"><h2>Biaya Admin Setoran</h2><p class="mut" style="margin-top:-6px">Berlaku untuk setoran <b>di atas</b> batas. Biaya bank memotong Kas Rekening; biaya dari siswa ditambahkan ke pembayaran dan masuk Kas Cash. Untung = biaya siswa &minus; biaya bank.</p><div class="grid2"><div><label>Batas setoran (Rp)</label><input id="c_a" inputmode="numeric" autocomplete="off" oninput="fmtIn(this)" value="'+fmtN(c.ambang)+'"></div><div><label>Biaya bank, potong Kas Rekening (Rp)</label><input id="c_b" inputmode="numeric" autocomplete="off" oninput="fmtIn(this)" value="'+fmtN(c.bank)+'"></div><div><label>Biaya admin dari siswa, masuk Kas Cash (Rp)</label><input id="c_c" inputmode="numeric" autocomplete="off" oninput="fmtIn(this)" value="'+fmtN(c.cust)+'"></div></div><br><button class="p" onclick="saveCfg()">Simpan Biaya</button></div></div>';
+  '<div class="card"><h2>Biaya Admin Setoran</h2><p class="mut" style="margin-top:-6px">Setoran <b>di atas</b> batas dikenai biaya sesuai rentang nominalnya. Biaya bank memotong Kas Rekening; biaya dari siswa ditambahkan ke uang yang diserahkan dan masuk Kas Cash. Setoran melebihi rentang terakhir memakai biaya rentang terakhir.</p><div class="grid2"><div><label>Batas bebas biaya (Rp)</label><input id="c_a" inputmode="numeric" autocomplete="off" oninput="fmtIn(this)" onchange="saveAmbang()" value="'+fmtN(c.ambang)+'"></div></div><br>'+
+  ((c.tiers||[]).length?'<div class="tw"><table><tr><th class="r">Sampai (Rp)</th><th class="r">Biaya bank</th><th class="r">Biaya siswa</th><th class="r">Untung</th><th></th></tr>'+c.tiers.slice().sort(function(a,b){return a.max-b.max}).map(function(x){var f=function(k){return '<input style="width:100px" inputmode="numeric" autocomplete="off" value="'+fmtN(x[k])+'" oninput="fmtIn(this)" onchange="updTier(\''+x.id+'\',\''+k+'\',this.value)">'};return '<tr><td class="r">'+f('max')+'</td><td class="r">'+f('bank')+'</td><td class="r">'+f('cust')+'</td><td class="r in" id="tu_'+x.id+'">'+rp((x.cust||0)-(x.bank||0))+'</td><td><button class="d" onclick="delTier(\''+x.id+'\')">Hapus</button></td></tr>'}).join('')+'</table></div><br>':'<p class="mut">Belum ada rentang biaya. Tambahkan di bawah.</p>')+
+  '<div class="grid2"><div><label>Sampai setoran (Rp)</label><input id="t_m" inputmode="numeric" autocomplete="off" oninput="fmtIn(this)" placeholder="mis. 100.000"></div><div><label>Biaya bank (Rp)</label><input id="t_b" inputmode="numeric" autocomplete="off" oninput="fmtIn(this)"></div><div><label>Biaya siswa (Rp)</label><input id="t_c" inputmode="numeric" autocomplete="off" oninput="fmtIn(this)"></div></div><br><button class="p" onclick="addTier()">Tambah Rentang</button></div></div>';
 }
 async function addBrg(){
   var v=$('d_l').value.split('|'),g=v[0],lay=v[1],pr=$('d_p').value.trim(),nm=$('d_b').value.split(/[,\n]/).map(function(z){return z.trim()}).filter(Boolean);
@@ -426,7 +429,10 @@ async function updBrg(id,f,v){var x=db.kat.items.find(function(z){return z.id===
 async function delBrg(id){var x=db.kat.items.find(function(z){return z.id===id});if(!x||!confirm('Hapus barang '+x.nama+'?'))return;var bk=JSON.stringify(db.kat);db.kat.items=db.kat.items.filter(function(z){return z.id!==id});if(!(await saveKat(bk)))return render();render()}
 async function addSet(){var n=$('s_n').value.trim(),j=numv('s_j');if(!n||j<1)return toast('Isi deskripsi dan jumlah setoran.');var bk=JSON.stringify(db.kat);db.kat.setor.push({id:uid(),nama:n,jml:j});if(!(await saveKat(bk)))return render();render()}
 async function delSet(id){var bk=JSON.stringify(db.kat);db.kat.setor=db.kat.setor.filter(function(z){return z.id!==id});if(!(await saveKat(bk)))return render();render()}
-async function saveCfg(){var bk=JSON.stringify(db.kat);db.kat.cfg={ambang:numv('c_a'),bank:numv('c_b'),cust:numv('c_c')};if(!(await saveKat(bk)))return render();toast('Biaya admin setoran disimpan');render()}
+async function saveAmbang(){var bk=JSON.stringify(db.kat);db.kat.cfg.ambang=numv('c_a');if(!(await saveKat(bk)))return render();toast('Batas disimpan')}
+async function addTier(){var m=numv('t_m');if(m<1)return toast('Isi batas setoran untuk rentang ini.');var bk=JSON.stringify(db.kat);db.kat.cfg.tiers=db.kat.cfg.tiers||[];db.kat.cfg.tiers.push({id:uid(),max:m,bank:numv('t_b'),cust:numv('t_c')});if(!(await saveKat(bk)))return render();render()}
+async function updTier(id,f,v){var x=db.kat.cfg.tiers.find(function(z){return z.id===id});if(!x)return;var bk=JSON.stringify(db.kat);x[f]=parseInt(String(v).replace(/\D/g,''),10)||0;if(!(await saveKat(bk)))return render();var u=$('tu_'+id);if(u)u.textContent=rp((x.cust||0)-(x.bank||0));toast('Tersimpan')}
+async function delTier(id){var bk=JSON.stringify(db.kat);db.kat.cfg.tiers=db.kat.cfg.tiers.filter(function(z){return z.id!==id});if(!(await saveKat(bk)))return render();render()}
 
 /* ===== Diskon / potongan siswa ===== */
 var TD=[['persen_nominal','% dari Nominal'],['persen_admin','% dari Biaya Admin / Keuntungan'],['rupiah','Potongan tetap (Rp)']];
@@ -529,9 +535,9 @@ function toggleJ(){var j=$('f_j').value,sj=(j==='setor'||j==='tarik');document.q
 function fillSiswa(){var k=$('f_k');if(!k)return;var l=db.siswa.filter(function(x){return x.kelas===k.value&&rekAktif(x.id)}).sort(function(a,b){return a.nama.localeCompare(b.nama)});$('f_s').innerHTML='<option value="">'+(k.value&&!l.length?'Belum ada siswa berekening':'Pilih siswa')+'</option>'+l.map(function(x){return '<option value="'+x.id+'">'+esc(x.nama)+'</option>'}).join('');setNr();toggleJ()}
 function setNr(){var f=$('f_nr');if(!f)return;var r=rekAktif($('f_s').value);f.value=r?r.no:''}
 function dsChg(){var x=db.kat.setor.find(function(z){return z.id===$('f_ds').value});if(x){$('f_ket').value=x.nama;$('f_jml').value=fmtN(x.jml)}setInfo()}
-function setInfo(){var e=$('f_info');if(!e||!$('f_j'))return;var m=numv('f_jml'),c=db.kat.cfg;
-  if($('f_j').value!=='setor'||!(m>c.ambang)||!(c.cust>0||c.bank>0)){e.innerHTML='';return}
-  e.innerHTML='<div class="msg">Setoran di atas '+rp(c.ambang)+': biaya admin <b>'+rp(c.cust)+'</b> ditambahkan ke pembayaran siswa (total <b>'+rp(m+c.cust)+'</b>, masuk kas cash). Biaya bank <b>'+rp(c.bank)+'</b> mengurangi kas rekening.'+(isA()?' Untung '+rp(c.cust-c.bank)+'.':'')+'</div>'}
+function setInfo(){var e=$('f_info');if(!e||!$('f_j'))return;var m=numv('f_jml'),f=feeFor(m);
+  if($('f_j').value!=='setor'||!m){e.innerHTML='';return}
+  e.innerHTML='<div class="msg">Siswa menyerahkan uang <b>'+rp(m+f.adm)+'</b>'+(f.adm?' (setoran '+rp(m)+' + biaya admin '+rp(f.adm)+')':'')+' \u2192 masuk Kas Cash. Kas Rekening berkurang <b>'+rp(m+f.bank)+'</b>'+(f.bank?' (setoran ke rekening siswa '+rp(m)+' + biaya bank '+rp(f.bank)+')':'')+'.'+(isA()&&(f.adm||f.bank)?' Untung biaya admin '+rp(f.adm-f.bank)+'.':'')+'</div>'}
 function note(m,e){$('fm').innerHTML='<div class="msg'+(e?' e':'')+'">'+m+'</div>'}
 function addTrx(){
   var j=$('f_j').value,jml=numv('f_jml'),sj=(j==='setor'||j==='tarik'),pet=$('f_p').value.trim(),sid=sj?$('f_s').value:null;
@@ -541,7 +547,7 @@ function addTrx(){
   if(!pet)return note('Nama petugas piket wajib diisi.',1);
   if(j==='setor'&&!rekAktif(sid))return note('Siswa belum punya rekening yang sudah terbit.',1);
   if((j==='keluar'||j==='masuk')&&!$('f_ket').value.trim())return note('Keterangan wajib diisi untuk transaksi koperasi.',1);
-  db.trx.push({id:uid(),tgl:$('f_tgl').value,jenis:j,sid:sid,jml:jml,ket:$('f_ket').value.trim(),kat:j==='keluar'?$('f_kat').value:'',adm:(j==='setor'&&jml>db.kat.cfg.ambang)?db.kat.cfg.cust:0,bank:(j==='setor'&&jml>db.kat.cfg.ambang)?db.kat.cfg.bank:0,rek:(sj&&rekAktif(sid))?rekAktif(sid).no:'',pet:pet,ts:Date.now()});
+  db.trx.push({id:uid(),tgl:$('f_tgl').value,jenis:j,sid:sid,jml:jml,ket:$('f_ket').value.trim(),kat:j==='keluar'?$('f_kat').value:'',adm:j==='setor'?feeFor(jml).adm:0,bank:j==='setor'?feeFor(jml).bank:0,rek:(sj&&rekAktif(sid))?rekAktif(sid).no:'',pet:pet,ts:Date.now()});
   try{localStorage.setItem('kop_pet',pet)}catch(e){}
   if(sj)lk=$('f_k').value;save();closeModal();msg='';toast('Transaksi tersimpan: '+JN[j]+' '+rp(jml));render();
 }
@@ -747,9 +753,11 @@ function kasRows(){
   db.jual.forEach(function(x){if(x.mod==null)return;var l=x.lay+(x.prov?' '+x.prov:'')+(x.brg?' '+x.brg:'')+' - '+pel(x);
     if(jTot(x)>0)a.push({tgl:x.tgl,ts:x.ts,kas:'cash',jenis:'masuk',jml:jTot(x),ket:'Pembayaran customer: '+l,pet:x.pet,auto:1});
     if(x.mod>0)a.push({tgl:x.tgl,ts:x.ts,kas:'rekening',jenis:'keluar',jml:x.mod,ket:'Modal aplikasi (bayar via BNI): '+l,pet:x.pet,auto:1})});
-  db.trx.forEach(function(t){if(t.jenis!=='setor')return;var z=sis(t.sid),n=z?' - '+z.nama+' ('+z.kelas+')':'';
-    if(t.adm>0)a.push({tgl:t.tgl,ts:t.ts,kas:'cash',jenis:'masuk',jml:t.adm,ket:'Biaya admin setoran'+n,pet:t.pet,auto:1});
-    if(t.bank>0)a.push({tgl:t.tgl,ts:t.ts,kas:'rekening',jenis:'keluar',jml:t.bank,ket:'Biaya bank setoran'+n,pet:t.pet,auto:1})});
+  db.trx.forEach(function(t){if(t.jenis!=='setor'&&t.jenis!=='tarik')return;var z=sis(t.sid),n=z?' - '+z.nama+' ('+z.kelas+')':'',st=t.jenis==='setor';
+    a.push({tgl:t.tgl,ts:t.ts,kas:'cash',jenis:st?'masuk':'keluar',jml:t.jml,ket:(st?'Setoran siswa diterima tunai':'Penarikan siswa dibayar tunai')+n,pet:t.pet,auto:1});
+    a.push({tgl:t.tgl,ts:t.ts,kas:'rekening',jenis:st?'keluar':'masuk',jml:t.jml,ket:(st?'Setoran ke rekening siswa':'Penarikan dari rekening siswa')+n,pet:t.pet,auto:1});
+    if(st&&t.adm>0)a.push({tgl:t.tgl,ts:t.ts,kas:'cash',jenis:'masuk',jml:t.adm,ket:'Biaya admin setoran'+n,pet:t.pet,auto:1});
+    if(st&&t.bank>0)a.push({tgl:t.tgl,ts:t.ts,kas:'rekening',jenis:'keluar',jml:t.bank,ket:'Biaya bank setoran'+n,pet:t.pet,auto:1})});
   return a.sort(function(x,y){return x.tgl<y.tgl?1:x.tgl>y.tgl?-1:(y.ts||0)-(x.ts||0)})}
 var kasTgl='';
 function vKasPtg(){
@@ -762,7 +770,7 @@ function vKasPtg(){
 function vKas(){
   if(!isA())return vKasPtg();
   var s=kasSaldo(),l=kasRows(),lim=200;
-  return '<div class="hero"><div><h2>Kas Bank Mini</h2><p>Modal tiap penjualan (dibayar lewat aplikasi BNI) memotong Kas Rekening; pembayaran customer masuk Kas Cash.</p></div><div class="acts"><button class="big" onclick="openKas(\'tambah\')">＋ Tambah Saldo</button><button class="big alt" onclick="openKas(\'kurang\')">− Kurangi Saldo</button><button class="big alt" onclick="openKas(\'pindah\')">⇄ Pindah Kas</button></div></div>'+
+  return '<div class="hero"><div><h2>Kas Bank Mini</h2><p>Setoran: uang tunai masuk Kas Cash, Kas Rekening berkurang ke saldo siswa. Penjualan: modal memotong Kas Rekening, pembayaran customer masuk Kas Cash.</p></div><div class="acts"><button class="big" onclick="openKas(\'tambah\')">＋ Tambah Saldo</button><button class="big alt" onclick="openKas(\'kurang\')">− Kurangi Saldo</button><button class="big alt" onclick="openKas(\'pindah\')">⇄ Pindah Kas</button></div></div>'+
   '<div class="sg">'+sc('🏦','Saldo Kas Rekening',rp(s.rek))+sc('💵','Saldo Kas Cash',rp(s.cash))+sc('💰','Total Kas',rp(s.rek+s.cash))+sc('🧾','Total Admin Diterima Cash',rp(s.adm)+' ('+s.n+' rek.)')+'</div>'+
   '<div class="card" style="margin-top:14px"><h2>Biaya Admin Rekening Baru</h2><p class="mut" style="margin-top:-6px">Nominal ini dipindahkan dari Saldo Kas Rekening ke Saldo Kas Cash setiap petugas mencatat rekening baru. Rekening yang sudah tercatat sebelumnya tidak berubah (memakai nominal saat dibuat).</p><div class="grid2"><div><label>Biaya admin per rekening baru (Rp)</label><input id="kas_adm" inputmode="numeric" autocomplete="off" oninput="fmtIn(this)" value="'+fmtN(db.admrek)+'"></div></div><br><button class="p" onclick="saveAdmRek()">Simpan Biaya Admin</button><div id="am">'+msg+'</div></div>'+
   '<div class="card"><h2>Riwayat Kas ('+l.length+')</h2>'+(l.length?'<div class="tw"><table><tr><th>Tanggal</th><th>Kas</th><th>Keterangan</th><th class="r">Jumlah</th><th>Petugas</th><th></th></tr>'+l.slice(0,lim).map(function(x){var p=x.jenis==='masuk';return '<tr><td>'+esc(x.tgl)+'</td><td>'+KN[x.kas]+'</td><td>'+esc(x.ket)+(x.auto?' <span class="mut">(otomatis)</span>':'')+'</td><td class="r '+(p?'in':'out')+'">'+(p?'+':'-')+rp(x.jml)+'</td><td>'+esc(x.pet||'')+'</td><td>'+(x.auto?'':'<button class="d" onclick="delKas(\''+x.id+'\')">Hapus</button>')+'</td></tr>'}).join('')+'</table></div>'+(l.length>lim?'<p class="mut">Menampilkan '+lim+' transaksi terbaru.</p>':''):'<p class="mut">Belum ada riwayat kas.</p>')+'</div>';
