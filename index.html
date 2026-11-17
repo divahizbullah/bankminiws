@@ -139,6 +139,12 @@ th{position:sticky;top:0;background:var(--card)}
 .pwb{position:relative;display:block}.pwb input{padding-right:46px;width:100%}
 .pwb button.eye{position:absolute;right:3px;top:50%;transform:translateY(-50%);background:none!important;border:0;box-shadow:none;min-height:0;padding:7px 9px;color:var(--mut,#667);cursor:pointer;display:flex;align-items:center;border-radius:8px}
 .pwb button.eye:hover{color:var(--pri)}.pwb button.eye:active{transform:translateY(-50%) scale(.9)}
+.prod{border:1px solid var(--bd);border-radius:12px;margin-bottom:10px;background:var(--card);overflow:hidden}
+.prod summary{cursor:pointer;padding:12px 14px;display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;list-style:none}
+.prod summary::-webkit-details-marker{display:none}.prod summary::before{content:"▸";transition:transform .2s;color:var(--pri)}
+.prod[open]>summary::before{transform:rotate(90deg)}.prod[open]>summary{border-bottom:1px solid var(--bd)}
+.prod summary b{font-size:15px}.prod .pa{margin-left:auto;display:flex;gap:6px}
+.prod .tw{padding:6px 10px}.prod .addv{display:flex;gap:8px;padding:10px 14px;border-top:1px dashed var(--bd)}.prod .addv input{flex:1;min-width:0}
 </style>
 </head>
 <body>
@@ -403,17 +409,22 @@ function pvChg(){var p=$('j_pv')?$('j_pv').value:null,l=katFor(curSvc,curLay).fi
 function brChg(){var x=selBrg();if(x){$('j_nom').value=fmtN(x.nom);$('j_mod').value=fmtN(x.modal);modT=1}else modT=0;jtot()}
 function nomIn(){if(!modT&&!selBrg())$('j_mod').value=$('j_nom').value;jtot()}
 function parseNom(t){t=String(t).toLowerCase().replace(/\s/g,'');var m=t.match(/^(\d+(?:[.,]\d+)?)(rb|k|ribu)$/);if(m)return Math.round(parseFloat(m[1].replace(',','.'))*1000);var d=t.replace(/[.,]/g,'');return /^\d{4,}$/.test(d)?parseInt(d,10):0}
-var dbq='';
+var dbq='',dbs='',dbt=null,dbo={};
 function layOpts(sel,all){return (all?'<option value="">'+all+'</option>':'')+Object.keys(SV).map(function(g){return '<optgroup label="'+GN[g]+'">'+SV[g].l.map(function(x){var v=g+'|'+x[0];return '<option value="'+esc(v)+'"'+(v===sel?' selected':'')+'>'+x[1]+' '+esc(x[0])+'</option>'}).join('')+'</optgroup>'}).join('')}
 function vDb(){
   if(!isA())return vDash();
   var K=db.kat,c=K.cfg,pv={};K.items.forEach(function(x){if(x.prov)pv[x.prov]=1});
   var its=K.items.filter(function(x){return !dbq||x.g+'|'+x.lay===dbq}).sort(function(a,b){return a.g.localeCompare(b.g)||a.lay.localeCompare(b.lay)||(a.prov||'').localeCompare(b.prov||'')||a.nom-b.nom});
+  var dbl=dbs.toLowerCase();its=its.filter(function(x){return !dbl||((x.prov||'')+' '+x.nama+' '+x.lay).toLowerCase().indexOf(dbl)>=0});
+  var G=[],gm={};its.forEach(function(x){var k=x.g+'|'+x.lay+'|'+(x.prov||'');if(!gm[k]){gm[k]={k:k,g:x.g,lay:x.lay,prov:x.prov||'',items:[]};G.push(gm[k])}gm[k].items.push(x)});window.dbg=G;
   var inp=function(id,f,v){return '<input style="width:112px" inputmode="numeric" autocomplete="off" value="'+fmtN(v)+'" oninput="fmtIn(this)" onchange="updBrg(\''+id+'\',\''+f+'\',this.value)">'};
-  return '<div class="hero"><div><h2>Database</h2><p>Data barang untuk menu Penjualan, Layanan Digital &amp; Pembayaran, serta pilihan deskripsi dan biaya admin setoran.</p></div></div>'+
-  '<div class="card" style="margin-top:14px"><h2>Tambah Barang</h2><p class="mut" style="margin-top:-6px">Contoh: Layanan Pulsa, Provider IM3, Barang <b>10rb, 20rb, 30rb</b>. Nominal terbaca otomatis dari nama; nominal dan modal bisa diubah di tabel di bawah.</p><div class="grid2"><div><label>Layanan</label><select id="d_l">'+layOpts(dbq)+'</select></div><div><label>Provider (opsional)</label><input id="d_p" list="d_pl" placeholder="mis. IM3, Telkomsel"><datalist id="d_pl">'+Object.keys(pv).map(function(v){return '<option value="'+esc(v)+'">'}).join('')+'</datalist></div><div><label>Barang (pisahkan dengan koma)</label><input id="d_b" placeholder="10rb, 20rb, 30rb"></div></div><br><button class="p" onclick="addBrg()">Tambah Barang</button></div>'+
-  '<div class="card"><h2>Daftar Barang ('+its.length+')</h2><div class="grid2"><div><label>Tampilkan layanan</label><select onchange="dbq=this.value;render()">'+layOpts(dbq,'Semua layanan')+'</select></div></div><br>'+
-  (its.length?'<div class="tw"><table><tr><th>Layanan</th><th>Provider</th><th>Barang</th><th class="r">Nominal (Rp)</th><th class="r">Modal (Rp)</th><th class="r">Selisih</th><th></th></tr>'+its.map(function(x){return '<tr><td>'+esc(GN[x.g]+' · '+x.lay)+'</td><td>'+esc(x.prov||'-')+'</td><td>'+esc(x.nama)+'</td><td class="r">'+inp(x.id,'nom',x.nom)+'</td><td class="r">'+inp(x.id,'modal',x.modal)+'</td><td class="r in" id="u_'+x.id+'">'+rp(x.nom-x.modal)+'</td><td style="white-space:nowrap"><button onclick="editBrg(\''+x.id+'\')">Edit</button> <button class="d" onclick="delBrg(\''+x.id+'\')">Hapus</button></td></tr>'}).join('')+'</table></div>':'<p class="mut">Belum ada barang. Tambahkan di atas.</p>')+'</div>'+
+  return '<div class="hero"><div><h2>Database</h2><p>Data produk dan varian untuk menu Penjualan, Layanan Digital &amp; Pembayaran, serta pilihan deskripsi dan biaya admin setoran.</p></div></div>'+
+  '<div class="card" style="margin-top:14px"><h2>Tambah Produk</h2><p class="mut" style="margin-top:-6px">Contoh: layanan Pulsa, produk <b>IM3</b>, varian <b>10rb, 15rb, 20rb</b>. Nominal terbaca otomatis dari nama varian; modal diisi di tabel produk. Varian baru juga bisa ditambah langsung di dalam produk yang sudah ada.</p><div class="grid2"><div><label>Layanan</label><select id="d_l">'+layOpts(dbq)+'</select></div><div><label>Nama produk (mis. IM3, Telkomsel)</label><input id="d_p" list="d_pl" placeholder="kosongkan jika tidak ada"><datalist id="d_pl">'+Object.keys(pv).map(function(v){return '<option value="'+esc(v)+'">'}).join('')+'</datalist></div><div><label>Varian (pisahkan dengan koma)</label><input id="d_b" placeholder="10rb, 20rb, 30rb"></div></div><br><button class="p" onclick="addBrg()">Tambah Produk</button></div>'+
+  '<div class="card"><h2>Daftar Produk ('+G.length+' produk, '+its.length+' varian)</h2><div class="grid2"><div><label>Tampilkan layanan</label><select onchange="dbq=this.value;render()">'+layOpts(dbq,'Semua layanan')+'</select></div><div><label>Cari produk / varian</label><input id="dbs" autocomplete="off" value="'+esc(dbs)+'" placeholder="mis. IM3 atau 10rb" oninput="dbSearch(this.value)"></div></div><br>'+
+  (G.length?G.map(function(p,i){var op=dbo[p.k]!==undefined?dbo[p.k]:(G.length<=3||!!dbs);
+    return '<details class="prod"'+(op?' open':'')+' ontoggle="dbo[dbg['+i+'].k]=this.open"><summary><b>'+esc(p.prov||'Tanpa nama produk')+'</b><span class="mut">'+esc(GN[p.g]+' · '+p.lay)+' · '+p.items.length+' varian</span><span class="pa"><button onclick="event.preventDefault();event.stopPropagation();editProd('+i+')">Edit Produk</button><button class="d" onclick="event.preventDefault();event.stopPropagation();delProd('+i+')">Hapus Produk</button></span></summary>'+
+    '<div class="tw"><table><tr><th>Varian</th><th class="r">Nominal (Rp)</th><th class="r">Modal (Rp)</th><th class="r">Selisih</th><th></th></tr>'+p.items.map(function(x){return '<tr><td>'+esc(x.nama)+'</td><td class="r">'+inp(x.id,'nom',x.nom)+'</td><td class="r">'+inp(x.id,'modal',x.modal)+'</td><td class="r in" id="u_'+x.id+'">'+rp(x.nom-x.modal)+'</td><td style="white-space:nowrap"><button onclick="editBrg(\''+x.id+'\')">Edit</button> <button class="d" onclick="delBrg(\''+x.id+'\')">Hapus</button></td></tr>'}).join('')+'</table></div>'+
+    '<div class="addv"><input id="av_'+i+'" autocomplete="off" placeholder="Tambah varian: 25rb, 50rb" onkeydown="if(event.key===\'Enter\')addVar('+i+')"><button class="p" onclick="addVar('+i+')">＋ Tambah Varian</button></div></details>'}).join(''):'<p class="mut">Belum ada produk. Tambahkan di atas.</p>')+'</div>'+
   '<div class="cols"><div class="card"><h2>Deskripsi Setoran</h2><p class="mut" style="margin-top:-6px">Pilihan nama dan angka yang muncul di form Setor Uang.</p><div class="grid2"><div><label>Nama / deskripsi</label><input id="s_n" placeholder="mis. Tabungan mingguan"></div><div><label>Jumlah (Rp)</label><input id="s_j" inputmode="numeric" autocomplete="off" placeholder="0" oninput="fmtIn(this)"></div></div><br><button class="p" onclick="addSet()">Tambah</button><br><br>'+
   (K.setor.length?'<div class="tw"><table><tr><th>Deskripsi</th><th class="r">Jumlah</th><th></th></tr>'+K.setor.slice().sort(function(a,b){return a.jml-b.jml}).map(function(x){return '<tr><td>'+esc(x.nama)+'</td><td class="r">'+rp(x.jml)+'</td><td><button class="d" onclick="delSet(\''+x.id+'\')">Hapus</button></td></tr>'}).join('')+'</table></div>':'<p class="mut">Belum ada deskripsi setoran.</p>')+'</div>'+
   '<div class="card"><h2>Biaya Admin Setoran</h2><p class="mut" style="margin-top:-6px">Setoran <b>di atas</b> batas dikenai biaya sesuai rentang nominalnya. Biaya bank memotong Kas Rekening; biaya dari siswa ditambahkan ke uang yang diserahkan dan masuk Kas Cash. Setoran melebihi rentang terakhir memakai biaya rentang terakhir.</p><div class="grid2"><div><label>Batas bebas biaya (Rp)</label><input id="c_a" inputmode="numeric" autocomplete="off" oninput="fmtIn(this)" onchange="saveAmbang()" value="'+fmtN(c.ambang)+'"></div></div><br>'+
@@ -422,17 +433,17 @@ function vDb(){
 }
 async function addBrg(){
   var v=$('d_l').value.split('|'),g=v[0],lay=v[1],pr=$('d_p').value.trim(),nm=$('d_b').value.split(/[,\n]/).map(function(z){return z.trim()}).filter(Boolean);
-  if(!nm.length)return toast('Isi nama barang terlebih dahulu.');
+  if(!nm.length)return toast('Isi nama varian terlebih dahulu.');
   var bk=JSON.stringify(db.kat),ex={},n=0;db.kat.items.forEach(function(x){ex[x.g+'|'+x.lay+'|'+(x.prov||'').toLowerCase()+'|'+x.nama.toLowerCase()]=1});
   nm.forEach(function(b){var k=g+'|'+lay+'|'+pr.toLowerCase()+'|'+b.toLowerCase();if(ex[k])return;ex[k]=1;db.kat.items.push({id:uid(),g:g,lay:lay,prov:pr,nama:b,nom:parseNom(b),modal:0});n++});
-  if(!n)return toast('Semua barang itu sudah ada.');
-  dbq=g+'|'+lay;if(!(await saveKat(bk)))return render();toast(n+' barang ditambahkan. Isi modalnya di tabel.');render()}
+  if(!n)return toast('Semua varian itu sudah ada.');
+  dbq=g+'|'+lay;dbo[g+'|'+lay+'|'+pr]=true;if(!(await saveKat(bk)))return render();toast(n+' varian ditambahkan. Isi modalnya di tabel.');render()}
 function editBrg(id){
   var x=db.kat.items.find(function(z){return z.id===id});if(!x)return;
-  openModal('<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><h2 style="margin:0">Edit Barang</h2><button onclick="closeModal()" aria-label="Tutup">✕</button></div><div class="grid2">'+
+  openModal('<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><h2 style="margin:0">Edit Varian</h2><button onclick="closeModal()" aria-label="Tutup">✕</button></div><div class="grid2">'+
   '<div><label>Layanan</label><select id="eb_l">'+layOpts(x.g+'|'+x.lay)+'</select></div>'+
   '<div><label>Provider (opsional)</label><input id="eb_p" value="'+esc(x.prov||'')+'"></div>'+
-  '<div><label>Nama barang</label><input id="eb_n" value="'+esc(x.nama)+'"></div>'+
+  '<div><label>Nama varian</label><input id="eb_n" value="'+esc(x.nama)+'"></div>'+
   '<div><label>Nominal (Rp)</label><input id="eb_nom" inputmode="numeric" autocomplete="off" oninput="fmtIn(this)" value="'+fmtN(x.nom)+'"></div>'+
   '<div><label>Modal (Rp)</label><input id="eb_m" inputmode="numeric" autocomplete="off" oninput="fmtIn(this)" value="'+fmtN(x.modal)+'"></div></div><div id="ebm"></div><br>'+
   '<button class="p" onclick="saveBrg(\''+id+'\')">Simpan</button> <button onclick="closeModal()">Batal</button>')}
@@ -440,15 +451,40 @@ async function saveBrg(id){
   function er(m){$('ebm').innerHTML='<div class="msg e">'+m+'</div>'}
   var x=db.kat.items.find(function(z){return z.id===id});if(!x)return;
   var v=$('eb_l').value.split('|'),g=v[0],lay=v[1],pr=$('eb_p').value.trim(),nm=$('eb_n').value.trim();
-  if(!nm)return er('Nama barang wajib diisi.');
+  if(!nm)return er('Nama varian wajib diisi.');
   var key=function(a,b,c,d){return a+'|'+b+'|'+(c||'').toLowerCase()+'|'+d.toLowerCase()};
-  if(db.kat.items.some(function(z){return z.id!==id&&key(z.g,z.lay,z.prov,z.nama)===key(g,lay,pr,nm)}))return er('Barang yang sama sudah ada.');
+  if(db.kat.items.some(function(z){return z.id!==id&&key(z.g,z.lay,z.prov,z.nama)===key(g,lay,pr,nm)}))return er('Varian yang sama sudah ada.');
   var bk=JSON.stringify(db.kat);x.g=g;x.lay=lay;x.prov=pr;x.nama=nm;x.nom=numv('eb_nom');x.modal=numv('eb_m');
   if(!(await saveKat(bk)))return render();
-  closeModal();dbq=g+'|'+lay;toast('Barang diperbarui');render()}
+  closeModal();dbq=g+'|'+lay;toast('Varian diperbarui');render()}
+function dbSearch(v){dbs=v;clearTimeout(dbt);dbt=setTimeout(function(){render();var e=$('dbs');if(e){e.focus();try{e.setSelectionRange(e.value.length,e.value.length)}catch(x){}}},300)}
+function grpItems(p){return db.kat.items.filter(function(x){return x.g===p.g&&x.lay===p.lay&&(x.prov||'')===p.prov})}
+async function addVar(i){
+  var p=dbg[i];if(!p)return;var nm=($('av_'+i).value||'').split(/[,\n]/).map(function(z){return z.trim()}).filter(Boolean);
+  if(!nm.length)return toast('Isi nama varian, mis. 25rb, 50rb.');
+  var bk=JSON.stringify(db.kat),ex={},n=0;grpItems(p).forEach(function(x){ex[x.nama.toLowerCase()]=1});
+  nm.forEach(function(b){var k=b.toLowerCase();if(ex[k])return;ex[k]=1;db.kat.items.push({id:uid(),g:p.g,lay:p.lay,prov:p.prov,nama:b,nom:parseNom(b),modal:0});n++});
+  if(!n)return toast('Semua varian itu sudah ada.');
+  dbo[p.k]=true;if(!(await saveKat(bk)))return render();toast(n+' varian ditambahkan. Isi modalnya di tabel.');render()}
+function editProd(i){
+  var p=dbg[i];if(!p)return;window._ep={g:p.g,lay:p.lay,prov:p.prov};
+  openModal('<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><h2 style="margin:0">Edit Produk</h2><button onclick="closeModal()" aria-label="Tutup">✕</button></div><p class="mut" style="margin-top:0">Perubahan berlaku untuk semua varian di produk ini ('+p.items.length+' varian).</p><div class="grid2"><div><label>Layanan</label><select id="ep_l">'+layOpts(p.g+'|'+p.lay)+'</select></div><div><label>Nama produk</label><input id="ep_n" value="'+esc(p.prov)+'" placeholder="mis. IM3"></div></div><div id="epm"></div><br><button class="p" onclick="saveProd()">Simpan</button> <button onclick="closeModal()">Batal</button>')}
+async function saveProd(){
+  var o=window._ep;if(!o)return;var v=$('ep_l').value.split('|'),g=v[0],lay=v[1],pr=$('ep_n').value.trim();
+  var mine=grpItems(o),ids={};mine.forEach(function(x){ids[x.id]=1});
+  var ex={};db.kat.items.forEach(function(x){if(!ids[x.id]&&x.g===g&&x.lay===lay&&(x.prov||'')===pr)ex[x.nama.toLowerCase()]=1});
+  var dup=mine.filter(function(x){return ex[x.nama.toLowerCase()]}).map(function(x){return x.nama});
+  if(dup.length)return $('epm').innerHTML='<div class="msg e">Produk tujuan sudah punya varian: '+esc(dup.join(', '))+'.</div>';
+  var bk=JSON.stringify(db.kat);mine.forEach(function(x){x.g=g;x.lay=lay;x.prov=pr});
+  if(!(await saveKat(bk)))return render();
+  if(dbq)dbq=g+'|'+lay;dbo[g+'|'+lay+'|'+pr]=true;closeModal();toast('Produk diperbarui');render()}
+async function delProd(i){
+  var p=dbg[i];if(!p)return;if(!confirm('Hapus produk '+(p.prov||'ini')+' beserta '+p.items.length+' variannya?'))return;
+  var bk=JSON.stringify(db.kat),ids={};p.items.forEach(function(x){ids[x.id]=1});db.kat.items=db.kat.items.filter(function(x){return !ids[x.id]});
+  if(!(await saveKat(bk)))return render();toast('Produk dihapus');render()}
 async function updBrg(id,f,v){var x=db.kat.items.find(function(z){return z.id===id});if(!x)return;var bk=JSON.stringify(db.kat);x[f]=parseInt(String(v).replace(/\D/g,''),10)||0;
   if(!(await saveKat(bk)))return render();var u=$('u_'+id);if(u)u.textContent=rp(x.nom-x.modal);toast('Tersimpan')}
-async function delBrg(id){var x=db.kat.items.find(function(z){return z.id===id});if(!x||!confirm('Hapus barang '+x.nama+'?'))return;var bk=JSON.stringify(db.kat);db.kat.items=db.kat.items.filter(function(z){return z.id!==id});if(!(await saveKat(bk)))return render();render()}
+async function delBrg(id){var x=db.kat.items.find(function(z){return z.id===id});if(!x||!confirm('Hapus varian '+x.nama+'?'))return;var bk=JSON.stringify(db.kat);db.kat.items=db.kat.items.filter(function(z){return z.id!==id});if(!(await saveKat(bk)))return render();render()}
 async function addSet(){var n=$('s_n').value.trim(),j=numv('s_j');if(!n||j<1)return toast('Isi deskripsi dan jumlah setoran.');var bk=JSON.stringify(db.kat);db.kat.setor.push({id:uid(),nama:n,jml:j});if(!(await saveKat(bk)))return render();render()}
 async function delSet(id){var bk=JSON.stringify(db.kat);db.kat.setor=db.kat.setor.filter(function(z){return z.id!==id});if(!(await saveKat(bk)))return render();render()}
 async function saveAmbang(){var bk=JSON.stringify(db.kat);db.kat.cfg.ambang=numv('c_a');if(!(await saveKat(bk)))return render();toast('Batas disimpan')}
