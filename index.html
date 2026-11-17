@@ -136,6 +136,9 @@ th{position:sticky;top:0;background:var(--card)}
 .kb.b .go2{color:#0f4a7c}
 .kb.dis{opacity:.55;filter:grayscale(.3)}
 @media(max-width:820px){.kg{grid-template-columns:1fr}.kb{min-height:230px;padding:22px}.kb .ic{width:84px;height:84px;font-size:46px;border-radius:24px}.kb h3{font-size:24px}.ks{min-height:0}}
+.pwb{position:relative;display:block}.pwb input{padding-right:46px;width:100%}
+.pwb button.eye{position:absolute;right:3px;top:50%;transform:translateY(-50%);background:none!important;border:0;box-shadow:none;min-height:0;padding:7px 9px;color:var(--mut,#667);cursor:pointer;display:flex;align-items:center;border-radius:8px}
+.pwb button.eye:hover{color:var(--pri)}.pwb button.eye:active{transform:translateY(-50%) scale(.9)}
 </style>
 </head>
 <body>
@@ -410,7 +413,7 @@ function vDb(){
   return '<div class="hero"><div><h2>Database</h2><p>Data barang untuk menu Penjualan, Layanan Digital &amp; Pembayaran, serta pilihan deskripsi dan biaya admin setoran.</p></div></div>'+
   '<div class="card" style="margin-top:14px"><h2>Tambah Barang</h2><p class="mut" style="margin-top:-6px">Contoh: Layanan Pulsa, Provider IM3, Barang <b>10rb, 20rb, 30rb</b>. Nominal terbaca otomatis dari nama; nominal dan modal bisa diubah di tabel di bawah.</p><div class="grid2"><div><label>Layanan</label><select id="d_l">'+layOpts(dbq)+'</select></div><div><label>Provider (opsional)</label><input id="d_p" list="d_pl" placeholder="mis. IM3, Telkomsel"><datalist id="d_pl">'+Object.keys(pv).map(function(v){return '<option value="'+esc(v)+'">'}).join('')+'</datalist></div><div><label>Barang (pisahkan dengan koma)</label><input id="d_b" placeholder="10rb, 20rb, 30rb"></div></div><br><button class="p" onclick="addBrg()">Tambah Barang</button></div>'+
   '<div class="card"><h2>Daftar Barang ('+its.length+')</h2><div class="grid2"><div><label>Tampilkan layanan</label><select onchange="dbq=this.value;render()">'+layOpts(dbq,'Semua layanan')+'</select></div></div><br>'+
-  (its.length?'<div class="tw"><table><tr><th>Layanan</th><th>Provider</th><th>Barang</th><th class="r">Nominal (Rp)</th><th class="r">Modal (Rp)</th><th class="r">Selisih</th><th></th></tr>'+its.map(function(x){return '<tr><td>'+esc(GN[x.g]+' · '+x.lay)+'</td><td>'+esc(x.prov||'-')+'</td><td>'+esc(x.nama)+'</td><td class="r">'+inp(x.id,'nom',x.nom)+'</td><td class="r">'+inp(x.id,'modal',x.modal)+'</td><td class="r in" id="u_'+x.id+'">'+rp(x.nom-x.modal)+'</td><td><button class="d" onclick="delBrg(\''+x.id+'\')">Hapus</button></td></tr>'}).join('')+'</table></div>':'<p class="mut">Belum ada barang. Tambahkan di atas.</p>')+'</div>'+
+  (its.length?'<div class="tw"><table><tr><th>Layanan</th><th>Provider</th><th>Barang</th><th class="r">Nominal (Rp)</th><th class="r">Modal (Rp)</th><th class="r">Selisih</th><th></th></tr>'+its.map(function(x){return '<tr><td>'+esc(GN[x.g]+' · '+x.lay)+'</td><td>'+esc(x.prov||'-')+'</td><td>'+esc(x.nama)+'</td><td class="r">'+inp(x.id,'nom',x.nom)+'</td><td class="r">'+inp(x.id,'modal',x.modal)+'</td><td class="r in" id="u_'+x.id+'">'+rp(x.nom-x.modal)+'</td><td style="white-space:nowrap"><button onclick="editBrg(\''+x.id+'\')">Edit</button> <button class="d" onclick="delBrg(\''+x.id+'\')">Hapus</button></td></tr>'}).join('')+'</table></div>':'<p class="mut">Belum ada barang. Tambahkan di atas.</p>')+'</div>'+
   '<div class="cols"><div class="card"><h2>Deskripsi Setoran</h2><p class="mut" style="margin-top:-6px">Pilihan nama dan angka yang muncul di form Setor Uang.</p><div class="grid2"><div><label>Nama / deskripsi</label><input id="s_n" placeholder="mis. Tabungan mingguan"></div><div><label>Jumlah (Rp)</label><input id="s_j" inputmode="numeric" autocomplete="off" placeholder="0" oninput="fmtIn(this)"></div></div><br><button class="p" onclick="addSet()">Tambah</button><br><br>'+
   (K.setor.length?'<div class="tw"><table><tr><th>Deskripsi</th><th class="r">Jumlah</th><th></th></tr>'+K.setor.slice().sort(function(a,b){return a.jml-b.jml}).map(function(x){return '<tr><td>'+esc(x.nama)+'</td><td class="r">'+rp(x.jml)+'</td><td><button class="d" onclick="delSet(\''+x.id+'\')">Hapus</button></td></tr>'}).join('')+'</table></div>':'<p class="mut">Belum ada deskripsi setoran.</p>')+'</div>'+
   '<div class="card"><h2>Biaya Admin Setoran</h2><p class="mut" style="margin-top:-6px">Setoran <b>di atas</b> batas dikenai biaya sesuai rentang nominalnya. Biaya bank memotong Kas Rekening; biaya dari siswa ditambahkan ke uang yang diserahkan dan masuk Kas Cash. Setoran melebihi rentang terakhir memakai biaya rentang terakhir.</p><div class="grid2"><div><label>Batas bebas biaya (Rp)</label><input id="c_a" inputmode="numeric" autocomplete="off" oninput="fmtIn(this)" onchange="saveAmbang()" value="'+fmtN(c.ambang)+'"></div></div><br>'+
@@ -424,6 +427,25 @@ async function addBrg(){
   nm.forEach(function(b){var k=g+'|'+lay+'|'+pr.toLowerCase()+'|'+b.toLowerCase();if(ex[k])return;ex[k]=1;db.kat.items.push({id:uid(),g:g,lay:lay,prov:pr,nama:b,nom:parseNom(b),modal:0});n++});
   if(!n)return toast('Semua barang itu sudah ada.');
   dbq=g+'|'+lay;if(!(await saveKat(bk)))return render();toast(n+' barang ditambahkan. Isi modalnya di tabel.');render()}
+function editBrg(id){
+  var x=db.kat.items.find(function(z){return z.id===id});if(!x)return;
+  openModal('<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><h2 style="margin:0">Edit Barang</h2><button onclick="closeModal()" aria-label="Tutup">✕</button></div><div class="grid2">'+
+  '<div><label>Layanan</label><select id="eb_l">'+layOpts(x.g+'|'+x.lay)+'</select></div>'+
+  '<div><label>Provider (opsional)</label><input id="eb_p" value="'+esc(x.prov||'')+'"></div>'+
+  '<div><label>Nama barang</label><input id="eb_n" value="'+esc(x.nama)+'"></div>'+
+  '<div><label>Nominal (Rp)</label><input id="eb_nom" inputmode="numeric" autocomplete="off" oninput="fmtIn(this)" value="'+fmtN(x.nom)+'"></div>'+
+  '<div><label>Modal (Rp)</label><input id="eb_m" inputmode="numeric" autocomplete="off" oninput="fmtIn(this)" value="'+fmtN(x.modal)+'"></div></div><div id="ebm"></div><br>'+
+  '<button class="p" onclick="saveBrg(\''+id+'\')">Simpan</button> <button onclick="closeModal()">Batal</button>')}
+async function saveBrg(id){
+  function er(m){$('ebm').innerHTML='<div class="msg e">'+m+'</div>'}
+  var x=db.kat.items.find(function(z){return z.id===id});if(!x)return;
+  var v=$('eb_l').value.split('|'),g=v[0],lay=v[1],pr=$('eb_p').value.trim(),nm=$('eb_n').value.trim();
+  if(!nm)return er('Nama barang wajib diisi.');
+  var key=function(a,b,c,d){return a+'|'+b+'|'+(c||'').toLowerCase()+'|'+d.toLowerCase()};
+  if(db.kat.items.some(function(z){return z.id!==id&&key(z.g,z.lay,z.prov,z.nama)===key(g,lay,pr,nm)}))return er('Barang yang sama sudah ada.');
+  var bk=JSON.stringify(db.kat);x.g=g;x.lay=lay;x.prov=pr;x.nama=nm;x.nom=numv('eb_nom');x.modal=numv('eb_m');
+  if(!(await saveKat(bk)))return render();
+  closeModal();dbq=g+'|'+lay;toast('Barang diperbarui');render()}
 async function updBrg(id,f,v){var x=db.kat.items.find(function(z){return z.id===id});if(!x)return;var bk=JSON.stringify(db.kat);x[f]=parseInt(String(v).replace(/\D/g,''),10)||0;
   if(!(await saveKat(bk)))return render();var u=$('u_'+id);if(u)u.textContent=rp(x.nom-x.modal);toast('Tersimpan')}
 async function delBrg(id){var x=db.kat.items.find(function(z){return z.id===id});if(!x||!confirm('Hapus barang '+x.nama+'?'))return;var bk=JSON.stringify(db.kat);db.kat.items=db.kat.items.filter(function(z){return z.id!==id});if(!(await saveKat(bk)))return render();render()}
@@ -913,6 +935,19 @@ boot();
   window.addEventListener('offline',function(){ss(1,'Offline - perubahan belum tersimpan')});
   window.addEventListener('online',function(){ss(0);toast('Kembali online');if(window.refresh&&role)refresh()});
   document.addEventListener('visibilitychange',function(){if(!document.hidden&&role==='admin'&&navigator.onLine&&!document.querySelector('#md.show')&&Date.now()-(window._lr||0)>60000){window._lr=Date.now();refresh()}});
+})();
+
+/* ===== Ikon mata untuk kolom password ===== */
+(function(){
+  var OPEN='<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>',
+  OFF='<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
+  function eyes(){Array.prototype.forEach.call(document.querySelectorAll('input[type=password]:not([data-eye])'),function(i){
+    i.setAttribute('data-eye','1');var w=document.createElement('span');w.className='pwb';i.parentNode.insertBefore(w,i);w.appendChild(i);
+    var b=document.createElement('button');b.type='button';b.className='eye';b.setAttribute('aria-label','Lihat password');b.innerHTML=OPEN;
+    b.onclick=function(){var t=i.type==='password';i.type=t?'text':'password';b.innerHTML=t?OFF:OPEN;b.setAttribute('aria-label',t?'Sembunyikan password':'Lihat password');i.focus()};
+    w.appendChild(b)})}
+  var q=0;new MutationObserver(function(){if(q)return;q=requestAnimationFrame(function(){q=0;eyes()})}).observe(document.body,{childList:true,subtree:true});
+  eyes();
 })();
 </script>
 <div class="credit">Created by <b>Diva Hizbullah, S.Kom</b></div>
