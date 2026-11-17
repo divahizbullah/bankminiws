@@ -333,10 +333,10 @@ function openSvc(g,i){
   '<div><label>'+(g==='bayar'?'Nominal Tagihan (Rp)':'Nominal (Rp)')+'</label><input type="text" id="j_nom" inputmode="numeric" autocomplete="off" placeholder="0" oninput="fmtIn(this);nomIn()"></div>'+
   '<div><label>Biaya Admin / Keuntungan (Rp)</label><input type="text" id="j_fee" value="'+fmtN(admFee(g,'siswa'))+'" inputmode="numeric" autocomplete="off" oninput="fmtIn(this);jtot()"'+(sw&&db.adm?' readonly':'')+'></div>'+
   '<div><label>Diskon Siswa</label><input id="j_dk" readonly value="Rp 0"></div>'+
-  '<div><label>Total Diterima dari Pelanggan</label><input id="j_tot" readonly value="Rp 0"></div>'+
+  '<div><label>Total yang Harus Dibayar Customer</label><input id="j_tot" readonly value="Rp 0"></div>'+
   '<div><label>Modal Aplikasi (Rp)</label><input type="text" id="j_mod" inputmode="numeric" autocomplete="off" placeholder="0" oninput="fmtIn(this);modT=1;jtot()"></div>'+
   (isA()?'<div><label>Untung (Dibayar Customer \u2212 Modal)</label><input id="j_un" readonly value="Rp 0"></div>':'')+
-  '<div><label>Petugas</label><input id="j_p" value="'+esc(pn)+'"'+(sw?' readonly':'')+'></div></div><br><label>Keterangan (opsional)</label><input id="j_ket" placeholder="mis. tagihan bulan Oktober"><br><br>'+
+  '<div><label>Petugas</label><input id="j_p" value="'+esc(pn)+'"'+(sw?' readonly':'')+'></div></div><br><label>Keterangan (opsional)</label><input id="j_ket" placeholder="mis. tagihan bulan Oktober"><br><div id="j_info"></div><br>'+
   '<button class="p" onclick="saveSvc(\''+g+'\','+i+')">Simpan Transaksi</button> <button onclick="closeModal()">Batal</button><div id="fm"></div>');
   klChg('');curSvc=g;curLay=n;modT=0;if($('j_br'))pvChg();jtot();$('j_no').focus();
 }
@@ -359,7 +359,7 @@ function klChg(pick){var k=$('j_kl').value,l=db.siswa.filter(function(x){return 
   $('j_sd').innerHTML='<option value="">- pilih siswa -</option>'+l.map(function(x){return '<option value="'+x.id+'"'+(x.id===pick?' selected':'')+'>'+esc(x.nama)+'</option>'}).join('');jtot()}
 function calcDisk(g,nom,fee){var c=db.set&&db.set[g];if(!c||!c.aktif||!(c.nilai>0))return 0;var d=c.tipe==='rupiah'?c.nilai:Math.round((c.tipe==='persen_admin'?fee:nom)*c.nilai/100);return Math.max(0,Math.min(d,nom+fee))}
 function diskNow(){if(!$('j_pb')||$('j_pb').value!=='siswa'||!$('j_sd').value)return 0;return calcDisk(curSvc,numv('j_nom'),numv('j_fee'))}
-function jtot(){var a=numv('j_nom'),b=numv('j_fee'),d=diskNow();$('j_dk').value=d?'-'+rp(d):'Rp 0';$('j_tot').value=rp(a+b-d);if($('j_un'))$('j_un').value=rp(a+b-d-numv('j_mod'))}
+function jtot(){var a=numv('j_nom'),b=numv('j_fee'),d=diskNow();$('j_dk').value=d?'-'+rp(d):'Rp 0';$('j_tot').value=rp(a+b-d);var ji=$('j_info');if(ji)ji.innerHTML=(a+b-d)>0?bigBox('Total yang harus dibayar customer',a+b-d,'Nominal '+rp(a)+(b?' + biaya admin '+rp(b):'')+(d?' \u2212 diskon '+rp(d):'')):'';if($('j_un'))$('j_un').value=rp(a+b-d-numv('j_mod'))}
 function saveSvc(g,i){
   var n=SV[g].l[i][0],no=$('j_no').value.trim(),nom=numv('j_nom'),fee=numv('j_fee'),pet=$('j_p').value.trim();
   if(!$('j_tgl').value)return note('Tanggal wajib diisi.',1);
@@ -582,7 +582,7 @@ function formTrx(j){
   '<div class="sj"><label>Kelas</label><select id="f_k" onchange="fillSiswa()">'+opts(kelasList(),lk,'Pilih kelas')+'</select></div>'+
   '<div class="sj"><label>Nama Siswa</label><select id="f_s" onchange="setNr()"></select></div>'+
   '<div class="sj"><label>No. Rekening BNI</label><input id="f_nr" readonly placeholder="otomatis setelah pilih nama"></div>'+
-  '<div class="kj hide"><label>Kategori</label><select id="f_kat">'+opts(KAT)+'</select></div>'+
+  '<div class="kj hide"><label>Kategori</label><select id="f_kat" onchange="setInfo()">'+opts(KAT)+'</select></div>'+
   (db.kat.setor.length?'<div class="sj"><label>Deskripsi Setoran</label><select id="f_ds" onchange="dsChg()"><option value="">- pilih / isi manual -</option>'+db.kat.setor.slice().sort(function(a,b){return a.jml-b.jml}).map(function(x){return '<option value="'+x.id+'">'+esc(x.nama)+' \u00b7 '+rp(x.jml)+'</option>'}).join('')+'</select></div>':'')+
   '<div><label>Jumlah (Rp)</label><input type="text" id="f_jml" inputmode="numeric" autocomplete="off" placeholder="0" oninput="fmtIn(this);setInfo()"></div>'+
   '<div><label>Keterangan</label><input id="f_ket" placeholder="mis. tabungan mingguan"></div>'+
@@ -593,8 +593,10 @@ function toggleJ(){var j=$('f_j').value,sj=(j==='setor'||j==='tarik');document.q
 function fillSiswa(){var k=$('f_k');if(!k)return;var l=db.siswa.filter(function(x){return x.kelas===k.value&&rekAktif(x.id)}).sort(function(a,b){return a.nama.localeCompare(b.nama)});$('f_s').innerHTML='<option value="">'+(k.value&&!l.length?'Belum ada siswa berekening':'Pilih siswa')+'</option>'+l.map(function(x){return '<option value="'+x.id+'">'+esc(x.nama)+'</option>'}).join('');setNr();toggleJ()}
 function setNr(){var f=$('f_nr');if(!f)return;var r=rekAktif($('f_s').value);f.value=r?r.no:''}
 function dsChg(){var x=db.kat.setor.find(function(z){return z.id===$('f_ds').value});if(x){$('f_ket').value=x.nama;$('f_jml').value=fmtN(x.jml)}setInfo()}
-function setInfo(){var e=$('f_info');if(!e||!$('f_j'))return;var m=numv('f_jml'),f=feeFor(m);
-  if($('f_j').value!=='setor'||!m){e.innerHTML='';return}
+function bigBox(t,v,sub){return '<div style="border:2px solid var(--pri);background:var(--pri2);border-radius:14px;padding:12px 16px;text-align:center"><div style="font-size:13px;color:var(--mut)">'+t+'</div><div style="font-size:30px;font-weight:800;color:var(--pri);line-height:1.2">'+rp(v)+'</div>'+(sub?'<div style="font-size:12px;color:var(--mut);margin-top:2px">'+sub+'</div>':'')+'</div>'}
+function setInfo(){var e=$('f_info');if(!e||!$('f_j'))return;var m=numv('f_jml'),f=feeFor(m),jj=$('f_j').value;
+  if(!m){e.innerHTML='';return}
+  if(jj!=='setor'){e.innerHTML=bigBox(jj==='masuk'?'Jumlah pemasukan yang diterima':'Jumlah pengeluaran',m,jj==='keluar'?'Kategori: '+esc($('f_kat').value):'');return}
   e.innerHTML='<div style="border:2px solid var(--pri);background:var(--pri2);border-radius:14px;padding:12px 16px;text-align:center"><div style="font-size:13px;color:var(--mut)">Jumlah yang harus dibayar penyetor</div><div style="font-size:30px;font-weight:800;color:var(--pri);line-height:1.2">'+rp(m+f.adm)+'</div><div style="font-size:12px;color:var(--mut);margin-top:2px">'+(f.adm?'Setoran '+rp(m)+' + biaya admin '+rp(f.adm):'Tanpa biaya admin')+'</div></div>'+
   (isA()?'<div style="font-size:11px;color:var(--mut);margin-top:6px;text-align:center">Kas Cash +'+rp(m+f.adm)+' \u00b7 Kas Rekening \u2212'+rp(m+f.bank)+(f.adm||f.bank?' \u00b7 Untung admin '+rp(f.adm-f.bank):'')+'</div>':'')}
 function note(m,e){$('fm').innerHTML='<div class="msg'+(e?' e':'')+'">'+m+'</div>'}
