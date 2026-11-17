@@ -151,6 +151,9 @@ th{position:sticky;top:0;background:var(--card)}
 .opt.sm button{flex:1 1 100px;min-height:44px}.opt button small{font-size:12px;color:var(--mut);font-weight:500}
 .opt button.sel{border-color:var(--pri);background:var(--pri2);color:var(--pri)}.opt.scr{max-height:230px;overflow:auto;padding:2px}
 .bigin{font-size:20px!important;font-weight:700;padding:12px!important}.stp .nav{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap}.stp .nav .p{flex:1}
+.pop{position:fixed;inset:0;z-index:95;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:16px}.pop.hide{display:none}
+.popc{background:var(--card);border-radius:16px;padding:16px;width:100%;max-width:460px;max-height:88vh;overflow:auto;animation:pop .2s both}.popc .nav{display:flex;gap:8px;margin-top:12px}.popc .nav .p{flex:1}
+.chp{display:inline-flex;align-items:center;gap:4px;background:var(--pri2);color:var(--pri);border-radius:99px;padding:3px 6px 3px 10px;margin:2px 4px 2px 0;font-weight:700;font-size:13px}.chp a{cursor:pointer;padding:0 6px;font-size:15px;color:var(--red)}
 </style>
 </head>
 <body>
@@ -181,7 +184,7 @@ th{position:sticky;top:0;background:var(--card)}
 var firebaseConfig={apiKey:"AIzaSyCBr0_1GPxqu5fM_an5dUmW8G84fzrac_o",authDomain:"bankminiws-43f13.firebaseapp.com",projectId:"bankminiws-43f13",storageBucket:"bankminiws-43f13.firebasestorage.app",messagingSenderId:"1030566006972",appId:"1:1030566006972:web:7b012402eb4a67b36d80b9",measurementId:"G-129KJ8EM5S"};
 var KAT=['Belanja Barang Dagangan','Operasional','Honor / Upah','ATK & Perlengkapan','Sosial / Kegiatan Sekolah','Lainnya'];
 var JN={setor:'Setoran Tabungan',tarik:'Penarikan Tabungan',masuk:'Pemasukan Koperasi',keluar:'Pengeluaran Koperasi'};
-var db={siswa:[],trx:[],set:{},wali:{},ptg:null,rek:[],kom:0,kat:{items:[],setor:[],cfg:{ambang:50000,tiers:[]}}},role=null,who='',wk='',lm='guru',st='kelas',sf='',lk='',tab='dash',msg='',flt={};
+var db={siswa:[],trx:[],set:{},wali:{},ptg:null,pvd:[],rek:[],kom:0,kat:{items:[],setor:[],cfg:{ambang:50000,tiers:[]}}},role=null,who='',wk='',lm='guru',st='kelas',sf='',lk='',tab='dash',msg='',flt={};
 if(!db.siswa)db.siswa=[];if(!db.trx)db.trx=[];if(!db.kelas)db.kelas=[];if(!db.imp)db.imp=[];if(!db.jual)db.jual=[];
 try{var r=sessionStorage.getItem('kop_role');if(r){var o=JSON.parse(r);if(o.r==='siswa'){role=o.r;who=o.n;wk=o.k||''}}}catch(e){}
 var auth=null,fs=null,sb=null;try{firebase.initializeApp(firebaseConfig);auth=firebase.auth();fs=firebase.firestore();sb=fs;try{firebase.analytics()}catch(e){}}catch(e){console.error(e)}
@@ -200,7 +203,7 @@ async function loadAll(){
   db.siswa=R[1].map(function(s){return{id:s.id,nama:s.nama,kelas:kn[s.kelas_id]||'Tanpa Kelas'}});
   db.trx=R[2].map(function(t){return{id:t.id,tgl:t.tanggal,jenis:t.jenis,sid:t.siswa_id,jml:Number(t.jumlah),ket:t.keterangan,kat:t.kategori||'',adm:Number(t.biaya_admin||0),bank:Number(t.biaya_bank||0),rek:t.no_rekening||'',pet:t.petugas,ts:Date.parse(t.dibuat_pada)}});
   db.jual=R[3].map(function(j){return{id:j.id,ts:Date.parse(j.dibuat_pada),tgl:j.tanggal,g:j.grup,lay:j.layanan,jn:j.jenis_transaksi||'',no:j.no_tujuan,nm:j.nama_pelanggan||'',pb:j.pembeli||'lain',sid:j.siswa_id||'',dsk:Number(j.diskon||0),mod:(j.modal_aplikasi==null?null:Number(j.modal_aplikasi)),brg:j.barang||'',prov:j.provider||'',nom:Number(j.nominal),fee:Number(j.biaya_admin),ket:j.keterangan,pet:j.petugas}});
-  db.kom=0;db.admrek=0;db.kas=[];db.kat=katDef();db.ptg=null;db.wali={};db.set={};db.adm=null;try{var ps=await fs.collection('pengaturan').get();ps.forEach(function(d){var n=d.data().nilai;if(d.id==='diskon')db.set=n||{};else if(d.id==='admin')db.adm=n||null;else if(d.id==='wali')db.wali=n||{};else if(d.id==='petugas')db.ptg=n||null;else if(d.id==='komisi')db.kom=Number(n)||0;else if(d.id==='adminrek')db.admrek=Number(n)||0;else if(d.id==='katalog'){db.kat=Object.assign(katDef(),n||{});db.kat.cfg=Object.assign(katDef().cfg,db.kat.cfg||{})}else if(d.id.indexOf('kas_')===0&&n)db.kas.push(n)})}catch(e){db.set={};db.adm=null}
+  db.kom=0;db.admrek=0;db.kas=[];db.kat=katDef();db.pvd=[];db.ptg=null;db.wali={};db.set={};db.adm=null;try{var ps=await fs.collection('pengaturan').get();ps.forEach(function(d){var n=d.data().nilai;if(d.id==='diskon')db.set=n||{};else if(d.id==='admin')db.adm=n||null;else if(d.id==='wali')db.wali=n||{};else if(d.id==='petugas')db.ptg=n||null;else if(d.id==='provider')db.pvd=Array.isArray(n)?n:[];else if(d.id==='komisi')db.kom=Number(n)||0;else if(d.id==='adminrek')db.admrek=Number(n)||0;else if(d.id==='katalog'){db.kat=Object.assign(katDef(),n||{});db.kat.cfg=Object.assign(katDef().cfg,db.kat.cfg||{})}else if(d.id.indexOf('kas_')===0&&n)db.kas.push(n)})}catch(e){db.set={};db.adm=null}
   db.imp=R[4].map(function(i){return{ts:Date.parse(i.dibuat_pada),tgl:i.tanggal,kelas:i.kelas_nama,oleh:i.diimport_oleh,jml:i.jumlah,file:i.nama_file||''}});
   db.rek=(R[5]||[]).map(function(r){return{id:r.id,sid:r.siswa_id,no:r.no_rekening,tgl:r.tanggal,jns:r.jenis||'baru',st:r.status||'terbit',pet:r.petugas||'',adm:Number(r.biaya_admin||0),ts:Date.parse(r.dibuat_pada)}});
   snap={kelas:ids(kelasNames(),function(x){return x}),siswa:ids(db.siswa,function(x){return x.id}),trx:ids(db.trx,function(x){return x.id}),jual:ids(db.jual,function(x){return x.id}),imp:ids(db.imp,function(x){return x.ts}),rek:ids(db.rek,function(x){return x.id})};
@@ -324,42 +327,78 @@ function vSvc(g){
   var S=SV[g],l=db.jual.filter(function(x){return x.g===g}).sort(function(a,b){return b.ts-a.ts}).slice(0,15);
   return '<div class="card"><h2>'+S.h+'</h2><p class="mut" style="margin-top:-6px">Pilih layanan untuk mencatat transaksi.</p><div class="svc">'+S.l.map(function(x,i){return '<button class="svb" onclick="openSvc(\''+g+'\','+i+')"><i>'+x[1]+'</i>'+esc(x[0])+'</button>'}).join('')+'</div></div><div class="card"><h2>Transaksi '+GN[g]+' Terakhir</h2>'+jtbl(l,isA())+'</div>';
 }
-var stp=1,svMan=0,svKl=[];
+/* ===== Data provider (4 angka awal nomor) ===== */
+function normNo(v){var d=String(v).replace(/\D/g,'');if(d.indexOf('62')===0)d='0'+d.slice(2);else if(d.charAt(0)==='8')d='0'+d;return d}
+function pvdFor(no){var d=normNo(no);if(d.length<4)return null;var q=d.slice(0,4);return db.pvd.find(function(p){return(p.pre||[]).indexOf(q)>=0})||null}
+async function savePvd(bk){try{await fs.collection('pengaturan').doc('provider').set({nilai:db.pvd})}catch(x){if(bk)db.pvd=JSON.parse(bk);toast('Gagal menyimpan: '+errm(x));return false}return true}
+function pvdUsed(pre,except){var o=db.pvd.find(function(p){return p.id!==except&&(p.pre||[]).indexOf(pre)>=0});return o?o.nama:''}
+function aProvider(){
+  var l=db.pvd.slice().sort(function(a,b){return a.nama.localeCompare(b.nama)}),nm={},pn={};db.kat.items.forEach(function(x){if(x.prov){nm[x.prov]=1;pn[x.prov.toLowerCase()]=1}});
+  return '<div class="card"><h2>Data Provider</h2><p class="mut" style="margin-top:0">Daftarkan 4 angka pertama nomor untuk tiap provider (mis. IM3: 0856, 0857). Saat petugas mengetik nomor, provider terbaca otomatis dan hanya produk provider itu yang muncul. <b>Nama provider harus sama dengan Nama produk di menu Database.</b></p><div class="grid2"><div><label>Nama provider</label><input id="pv_n" list="pv_nl" autocomplete="off" placeholder="mis. IM3"><datalist id="pv_nl">'+Object.keys(nm).map(function(v){return '<option value="'+esc(v)+'">'}).join('')+'</datalist></div><div><label>4 angka awal (pisahkan koma atau spasi)</label><input id="pv_p" autocomplete="off" placeholder="mis. 0856, 0857, 0814"></div></div><br><button class="p" onclick="addPvd()">Simpan Provider</button></div>'+
+  '<div class="card"><h2>Daftar Provider ('+l.length+')</h2>'+(l.length?'<div class="tw"><table><tr><th>Provider</th><th>4 angka awal</th><th>Tambah angka</th><th></th></tr>'+l.map(function(p){return '<tr><td><b>'+esc(p.nama)+'</b>'+(pn[p.nama.toLowerCase()]?'':'<div class="mut" style="font-size:11px">Belum ada produk di Database</div>')+'</td><td>'+(p.pre||[]).slice().sort().map(function(x){return '<span class="chp">'+x+'<a onclick="delPre(\''+p.id+'\',\''+x+'\')" title="Hapus">×</a></span>'}).join('')+'</td><td style="white-space:nowrap"><input id="ap_'+p.id+'" maxlength="4" inputmode="numeric" autocomplete="off" placeholder="0859" style="width:90px" onkeydown="if(event.key===\'Enter\')addPre(\''+p.id+'\')"> <button onclick="addPre(\''+p.id+'\')">＋</button></td><td><button class="d" onclick="delPvd(\''+p.id+'\')">Hapus</button></td></tr>'}).join('')+'</table></div>':'<p class="mut">Belum ada provider.</p>')+'</div>'}
+async function addPvd(){
+  var nm=$('pv_n').value.trim(),raw=($('pv_p').value||'').split(/[\s,;]+/).filter(Boolean);
+  if(!nm)return amsg('Nama provider wajib diisi.',1);if(!raw.length)return amsg('Isi minimal satu angka awal.',1);
+  var bad=raw.filter(function(r){return !/^\d{4}$/.test(r)});if(bad.length)return amsg('Harus tepat 4 angka: '+esc(bad.join(', ')),1);
+  var p=db.pvd.find(function(z){return z.nama.toLowerCase()===nm.toLowerCase()}),id=p?p.id:null;
+  for(var i=0;i<raw.length;i++){var u=pvdUsed(raw[i],id);if(u)return amsg('Angka '+raw[i]+' sudah dipakai provider '+esc(u)+'.',1)}
+  var bk=JSON.stringify(db.pvd);if(!p){p={id:uid(),nama:nm,pre:[]};db.pvd.push(p)}
+  raw.forEach(function(r){if(p.pre.indexOf(r)<0)p.pre.push(r)});
+  if(!(await savePvd(bk)))return render();amsg('Provider '+esc(p.nama)+' tersimpan ('+p.pre.length+' angka awal).',0,1)}
+async function addPre(id){
+  var p=db.pvd.find(function(z){return z.id===id});if(!p)return;var v=($('ap_'+id).value||'').trim();
+  if(!/^\d{4}$/.test(v))return amsg('Harus tepat 4 angka.',1);var u=pvdUsed(v,id);if(u)return amsg('Angka '+v+' sudah dipakai provider '+esc(u)+'.',1);
+  if(p.pre.indexOf(v)>=0)return amsg('Angka itu sudah ada.',1);
+  var bk=JSON.stringify(db.pvd);p.pre.push(v);if(!(await savePvd(bk)))return render();amsg('Angka '+v+' ditambahkan ke '+esc(p.nama)+'.',0,1)}
+async function delPre(id,v){var p=db.pvd.find(function(z){return z.id===id});if(!p)return;var bk=JSON.stringify(db.pvd);p.pre=p.pre.filter(function(x){return x!==v});if(!(await savePvd(bk)))return render();render()}
+async function delPvd(id){var p=db.pvd.find(function(z){return z.id===id});if(!p||!confirm('Hapus provider '+p.nama+'?'))return;var bk=JSON.stringify(db.pvd);db.pvd=db.pvd.filter(function(z){return z.id!==id});if(!(await savePvd(bk)))return render();render()}
+var stp=1,svMan=0,svKl=[],svPvd='',svAuto=false,svApplied='',svBy=false;
 function openSvc(g,i){
   if(role==='siswa'&&!pgs)return needPg();
   var x=SV[g].l[i],n=x[0],sw=role==='siswa',pn=sw?pgs:who;
   var lb=n==='Token Listrik'?'No. Meter / ID Pelanggan':g==='jual'?'No. HP':g==='digital'?'No. HP / Akun':'No. Pelanggan / ID';
-  curSvc=g;curLay=n;modT=0;stp=1;svMan=0;svKl=kelasList();
+  curSvc=g;curLay=n;modT=0;stp=1;svMan=0;svKl=kelasList();svPvd='';svAuto=false;svApplied='';svBy=false;
   openModal('<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><h2 style="margin:0">'+x[1]+' '+esc(n)+'</h2><button onclick="closeModal()" aria-label="Tutup">✕</button></div>'+
-  '<div class="sbar"><span id="sp1" class="on">1 Nomor</span><span id="sp2">2 Pembeli</span><span id="sp3">3 Barang</span><span id="sp4">4 Bayar</span></div>'+
-  '<div class="hide"><select id="j_pb"><option value="siswa">Siswa</option><option value="lain">Lain-lain</option></select><select id="j_kl"><option value="">-</option>'+svKl.map(function(k){return '<option>'+esc(k)+'</option>'}).join('')+'</select><select id="j_sd"></select><select id="j_jn"><option>Top Up Saldo</option><option>Kirim / Transfer</option><option>Tarik Tunai</option></select>'+catFields(g,n).replace(/<div><label>[^<]*<\/label>/g,'<div>')+'</div>'+
-  /* langkah 1 */
-  '<div class="stp" id="st1">'+(g==='digital'?'<label>Jenis transaksi</label><div class="opt" id="o_jn" style="margin-bottom:12px"></div>':'')+'<label>'+lb+'</label><input id="j_no" class="bigin" inputmode="numeric" autocomplete="off" placeholder="ketik nomor" onkeydown="if(event.key===\'Enter\')svGo(2)"><div class="nav"><button class="p" onclick="svGo(2)">Lanjut: Pembeli →</button></div></div>'+
-  /* langkah 2 */
-  '<div class="stp hide" id="st2"><label>Pembeli</label><div class="opt" id="o_pb"></div><div id="j_sw" style="margin-top:12px"><label>Kelas</label><div class="opt sm" id="o_kl"></div></div><div id="j_sw2" style="margin-top:12px"><label>Nama siswa</label><div class="opt sm scr" id="o_sd"></div></div><div id="j_lw" class="hide" style="margin-top:12px"><label>Nama pelanggan (opsional)</label><input id="j_nm"></div><div class="nav"><button onclick="svGo(1)">← Kembali</button><button class="p" onclick="svGo(3)">Lanjut: Barang →</button></div></div>'+
-  /* langkah 3 */
-  '<div class="stp hide" id="st3"><div id="o_pvw"><label>Provider</label><div class="opt sm" id="o_pv" style="margin-bottom:12px"></div></div><div id="o_brw"><label>Barang</label><div class="opt sm scr" id="o_br"></div></div><div id="j_nw" style="margin-top:12px"><label>'+(g==='bayar'?'Nominal Tagihan (Rp)':'Nominal (Rp)')+'</label><input type="text" id="j_nom" class="bigin" inputmode="numeric" autocomplete="off" placeholder="0" oninput="fmtIn(this);nomIn();svSum()"></div><div id="o_sum" style="margin-top:10px"></div><div class="nav"><button onclick="svGo(2)">← Kembali</button><button class="p" onclick="svGo(4)">Lanjut: Pembayaran →</button></div></div>'+
-  /* langkah 4 */
-  '<div class="stp hide" id="st4"><div id="j_info"></div><br><div class="grid2"><div><label>Tanggal</label><input type="date" id="j_tgl" value="'+today()+'"></div>'+
+  '<div class="sbar"><span id="sp1" class="on">1 Nomor</span><span id="sp2">2 Barang</span><span id="sp3">3 Bayar</span></div>'+
+  '<div class="hide"><select id="j_pb"><option value="siswa">Siswa</option><option value="lain">Lain-lain</option></select><select id="j_kl"><option value="">-</option>'+svKl.map(function(k){return '<option>'+esc(k)+'</option>'}).join('')+'</select><select id="j_sd"></select><select id="j_jn"><option>Top Up Saldo</option><option>Kirim / Transfer</option><option>Tarik Tunai</option></select>'+catFields(g,n).replace(/<div><label>[^<]*<\/label>/g,'<div>')+'<input id="j_p" value="'+esc(pn)+'"></div>'+
+  '<div class="stp" id="st1">'+(g==='digital'?'<label>Jenis transaksi</label><div class="opt" id="o_jn" style="margin-bottom:12px"></div>':'')+'<label>'+lb+'</label><input id="j_no" class="bigin" inputmode="numeric" autocomplete="off" placeholder="ketik nomor" oninput="svDetect()" onkeydown="if(event.key===\'Enter\')svGo(2)"><div id="o_det"></div><div class="nav"><button class="p" onclick="svGo(2)">Lanjut: Barang →</button></div></div>'+
+  '<div class="stp hide" id="st2"><div id="o_pvn"></div><div id="o_pvw"><label>Provider</label><div class="opt sm" id="o_pv" style="margin-bottom:12px"></div></div><div id="o_brw"><label>Barang</label><div class="opt sm scr" id="o_br"></div></div><div id="j_nw" style="margin-top:12px"><label>'+(g==='bayar'?'Nominal Tagihan (Rp)':'Nominal (Rp)')+'</label><input type="text" id="j_nom" class="bigin" inputmode="numeric" autocomplete="off" placeholder="0" oninput="fmtIn(this);nomIn();svSum()"></div><div id="o_sum" style="margin-top:10px"></div><div class="nav"><button onclick="svGo(1)">← Kembali</button><button class="p" onclick="svGo(3)">Lanjut: Pembayaran →</button></div></div>'+
+  '<div class="stp hide" id="st3"><div id="j_info"></div><br><div class="grid2"><div><label>Tanggal</label><input type="date" id="j_tgl" value="'+today()+'"></div>'+
   '<div><label>Biaya Admin / Keuntungan (Rp)</label><input type="text" id="j_fee" value="'+fmtN(admFee(g,'siswa'))+'" inputmode="numeric" autocomplete="off" oninput="fmtIn(this);jtot()"'+(sw&&db.adm?' readonly':'')+'></div>'+
   '<div><label>Diskon Siswa</label><input id="j_dk" readonly value="Rp 0"></div><div><label>Total yang Harus Dibayar Customer</label><input id="j_tot" readonly value="Rp 0"></div>'+
   '<div><label>Modal Aplikasi (Rp)</label><input type="text" id="j_mod" inputmode="numeric" autocomplete="off" placeholder="0" oninput="fmtIn(this);modT=1;jtot()"></div>'+
   (isA()?'<div><label>Untung (Dibayar Customer \u2212 Modal)</label><input id="j_un" readonly value="Rp 0"></div>':'')+
-  '<div><label>Petugas</label><input id="j_p" value="'+esc(pn)+'"'+(sw?' readonly':'')+'></div></div><br><label>Keterangan (opsional)</label><input id="j_ket" placeholder="mis. tagihan bulan Oktober"><div class="nav"><button onclick="svGo(3)">← Kembali</button><button class="p" onclick="saveSvc(\''+g+'\','+i+')">Simpan Transaksi</button></div><div id="fm"></div></div>');
+  '<div><label>Pembeli</label><div style="display:flex;gap:6px"><input id="j_pbv" readonly placeholder="Belum dipilih" onclick="openPb()" style="cursor:pointer"><button type="button" class="p" onclick="openPb()">Pilih</button></div></div></div><br><label>Keterangan (opsional)</label><input id="j_ket" placeholder="mis. tagihan bulan Oktober"><div class="nav"><button onclick="svGo(2)">← Kembali</button><button class="p" onclick="saveSvc(\''+g+'\','+i+')">Simpan Transaksi</button></div><div id="fm"></div></div>'+
+  '<div id="pbp" class="pop hide"><div class="popc"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><h3 style="margin:0">Pilih Pembeli</h3><button onclick="closePb()" aria-label="Tutup">✕</button></div><div class="opt" id="o_pb"></div>'+
+  '<div id="j_sw" style="margin-top:12px"><label>Kelas</label><div class="opt sm" id="o_kl"></div></div><div id="j_sw2" style="margin-top:12px"><label>Nama siswa</label><div class="opt sm scr" id="o_sd"></div></div>'+
+  '<div id="j_lw" class="hide" style="margin-top:12px"><label>Nama pelanggan (opsional)</label><input id="j_nm"><div class="nav"><button class="p" onclick="pickLain()">Simpan Pembeli</button></div></div></div></div>');
   pbChg();if($('j_br'))pvChg();svRender();jtot();$('j_no').focus();
 }
+function svDetect(){
+  var e=$('o_det');if(!e)return;var d=normNo($('j_no').value),p=pvdFor(d);svPvd=p?p.nama:'';
+  e.innerHTML=p?'<div class="msg" style="margin-top:8px">Provider terdeteksi: <b>'+esc(p.nama)+'</b></div>':(d.length>=4&&db.pvd.length&&$('j_pv')?'<div class="mut" style="margin-top:6px">Angka awal '+esc(d.slice(0,4))+' belum terdaftar di Data Provider.</div>':'')}
+function svApplyPv(){
+  var s=$('j_pv'),idx=-1;svDetect();
+  if(s&&svPvd)Array.prototype.forEach.call(s.options,function(o,i){if(idx<0&&o.value.trim().toLowerCase()===svPvd.trim().toLowerCase())idx=i});
+  svAuto=idx>=0;
+  if(svAuto&&svApplied!==svPvd){s.selectedIndex=idx;pvChg();svMan=0;$('j_nom').value='';$('j_mod').value='';modT=0;jtot();svApplied=svPvd}
+  if(!svAuto)svApplied='';
+  svRender()}
 function svGo(n){
   if(n>stp){
     if(stp<2&&n>=2&&!$('j_no').value.trim())return toast('Masukkan nomor tujuan terlebih dahulu.');
-    if(stp<3&&n>=3&&$('j_pb').value==='siswa'&&!$('j_sd').value)return toast('Pilih kelas dan nama siswa.');
-    if(stp<4&&n>=4&&numv('j_nom')<1)return toast('Pilih barang atau isi nominal terlebih dahulu.');
+    if(stp<3&&n>=3&&numv('j_nom')<1)return toast('Pilih barang atau isi nominal terlebih dahulu.');
   }
-  stp=n;for(var k=1;k<=4;k++){$('st'+k).classList.toggle('hide',k!==n);$('sp'+k).className=k===n?'on':(k<n?'dn':'')}
-  svRender();if(n===4)jtot();if(n===1)$('j_no').focus()}
+  stp=n;for(var k=1;k<=3;k++){$('st'+k).classList.toggle('hide',k!==n);$('sp'+k).className=k===n?'on':(k<n?'dn':'')}
+  if(n===2)svApplyPv();else svRender();if(n===3)jtot();if(n===1)$('j_no').focus()}
+function openPb(){svRender();$('pbp').classList.remove('hide')}
+function closePb(){$('pbp').classList.add('hide')}
+function svBuyer(){var pb=$('j_pb').value,t='';if(svBy){if(pb==='siswa'){var o=$('j_sd').options[$('j_sd').selectedIndex];t=o&&o.value?o.text+' ('+$('j_kl').value+')':''}else{var nm=$('j_nm').value.trim();t='Lain-lain'+(nm?': '+nm:'')}}$('j_pbv').value=t}
 function setJn(v){$('j_jn').value=v;svRender()}
-function setPb(v){$('j_pb').value=v;pbChg();svRender()}
-function setKl(i){$('j_kl').value=svKl[i];klChg('');svRender()}
-function setSd(id){$('j_sd').value=id;jtot();svRender()}
+function setPb(v){$('j_pb').value=v;svBy=false;pbChg();svBuyer();svRender()}
+function setKl(i){$('j_kl').value=svKl[i];klChg('');svBy=false;svBuyer();svRender()}
+function setSd(id){$('j_sd').value=id;svBy=true;jtot();svBuyer();svRender();closePb()}
+function pickLain(){svBy=true;svBuyer();jtot();closePb()}
 function setPvI(i){$('j_pv').selectedIndex=i;pvChg();svMan=0;$('j_nom').value='';$('j_mod').value='';modT=0;jtot();svRender()}
 function setBr(id){$('j_br').value=id;svMan=id?0:1;brChg();svRender()}
 function svSum(){var e=$('o_sum');if(!e)return;var b=selBrg(),a=numv('j_nom');e.innerHTML=a>0&&b?'<div class="msg">Dipilih: <b>'+esc((b.prov?b.prov+' ':'')+b.nama)+'</b> \u00b7 '+rp(a)+'</div>':''}
@@ -369,9 +408,11 @@ function svRender(){
   var pb=$('j_pb').value;$('o_pb').innerHTML=B(pb==='siswa','setPb(\'siswa\')','🎓 Siswa')+B(pb==='lain','setPb(\'lain\')','👤 Lain-lain');
   $('o_kl').innerHTML=svKl.length?svKl.map(function(k,i){return B(k===$('j_kl').value,'setKl('+i+')',esc(k))}).join(''):'<span class="mut">Belum ada kelas.</span>';
   var so=Array.prototype.filter.call($('j_sd').options,function(o){return o.value});
-  $('o_sd').innerHTML=$('j_kl').value?(so.length?so.map(function(o){return B(o.value===$('j_sd').value,'setSd(\''+o.value+'\')',o.text)}).join(''):'<span class="mut">Kelas ini belum punya siswa.</span>'):'<span class="mut">Pilih kelas dulu.</span>';
+  $('o_sd').innerHTML=$('j_kl').value?(so.length?so.map(function(o){return B(o.value===$('j_sd').value,'setSd(\''+o.value+'\')',esc(o.text))}).join(''):'<span class="mut">Kelas ini belum punya siswa.</span>'):'<span class="mut">Pilih kelas dulu.</span>';
   var hasBr=!!$('j_br'),hasPv=!!$('j_pv');
-  $('o_pvw').classList.toggle('hide',!hasPv);$('o_brw').classList.toggle('hide',!hasBr);
+  $('o_pvw').classList.toggle('hide',!hasPv||svAuto);
+  $('o_pvn').innerHTML=svAuto?'<div class="msg" style="margin-bottom:10px">Provider: <b>'+esc(svPvd)+'</b> (otomatis dari nomor)</div>':(svPvd&&hasPv?'<div class="msg e" style="margin-bottom:10px">Provider '+esc(svPvd)+' belum punya produk di layanan ini. Pilih manual di bawah.</div>':'');
+  $('o_brw').classList.toggle('hide',!hasBr);
   if(hasPv)$('o_pv').innerHTML=Array.prototype.map.call($('j_pv').options,function(o,i){return B(i===$('j_pv').selectedIndex,'setPvI('+i+')',esc(o.text))}).join('');
   if(hasBr){var cur=$('j_br').value;$('o_br').innerHTML=Array.prototype.filter.call($('j_br').options,function(o){return o.value}).map(function(o){var it=db.kat.items.find(function(z){return z.id===o.value});return B(o.value===cur,'setBr(\''+o.value+'\')','<b>'+esc(it?it.nama:o.text)+'</b><small>'+(it&&it.nom?rp(it.nom):'')+'</small>')}).join('')+B(!cur&&svMan,'setBr(\'\')','<b>✏️ Isi manual</b>')}
   $('j_nw').classList.toggle('hide',hasBr&&!svMan);svSum()}
@@ -397,6 +438,7 @@ function diskNow(){if(!$('j_pb')||$('j_pb').value!=='siswa'||!$('j_sd').value)re
 function jtot(){var a=numv('j_nom'),b=numv('j_fee'),d=diskNow();$('j_dk').value=d?'-'+rp(d):'Rp 0';$('j_tot').value=rp(a+b-d);var ji=$('j_info');if(ji)ji.innerHTML=(a+b-d)>0?bigBox('Total yang harus dibayar customer',a+b-d,'Nominal '+rp(a)+(b?' + biaya admin '+rp(b):'')+(d?' \u2212 diskon '+rp(d):'')):'';if($('j_un'))$('j_un').value=rp(a+b-d-numv('j_mod'))}
 function saveSvc(g,i){
   var n=SV[g].l[i][0],no=$('j_no').value.trim(),nom=numv('j_nom'),fee=numv('j_fee'),pet=$('j_p').value.trim();
+  if(!svBy){openPb();return note('Pilih pembeli terlebih dahulu.',1)}
   if(!$('j_tgl').value)return note('Tanggal wajib diisi.',1);
   if(!no)return note('Nomor tujuan / ID pelanggan wajib diisi.',1);
   if(!nom||nom<1)return note('Nominal harus lebih dari 0.',1);
@@ -664,7 +706,7 @@ function amsg(m,e,rr){msg='<div class="msg'+(e?' e':'')+'">'+m+'</div>';if(rr)re
 function setSt(x){st=x;msg='';render();if(x==='guru')loadGuru()}
 function esel(id,sel){return '<select id="'+id+'">'+opts(kelasList(),sel,'Pilih kelas')+'</select>'}
 function vAdmin(){
-  return '<div class="card"><h2>Administrasi</h2><div style="display:flex;gap:6px;flex-wrap:wrap"><button class="'+(st==='kelas'?'on':'')+'" onclick="setSt(\'kelas\')">Masukan Kelas</button><button class="'+(st==='siswa'?'on':'')+'" onclick="setSt(\'siswa\')">Masukan Data Siswa</button><button class="'+(st==='diskon'?'on':'')+'" onclick="setSt(\'diskon\')">Diskon Siswa</button><button class="'+(st==='petugas'?'on':'')+'" onclick="setSt(\'petugas\')">Petugas Login</button><button onclick="openAdm()">Biaya Admin</button>'+(gperan==='admin'?'<button class="'+(st==='guru'?'on':'')+'" onclick="setSt(\'guru\')">Daftarkan Guru</button>':'')+'</div><div id="am">'+msg+'</div></div>'+(st==='kelas'?aKelas():st==='diskon'?aDiskon():st==='petugas'?aPetugas():st==='guru'&&gperan==='admin'?aGuru():aSiswa());
+  return '<div class="card"><h2>Administrasi</h2><div style="display:flex;gap:6px;flex-wrap:wrap"><button class="'+(st==='kelas'?'on':'')+'" onclick="setSt(\'kelas\')">Masukan Kelas</button><button class="'+(st==='siswa'?'on':'')+'" onclick="setSt(\'siswa\')">Masukan Data Siswa</button><button class="'+(st==='diskon'?'on':'')+'" onclick="setSt(\'diskon\')">Diskon Siswa</button><button class="'+(st==='petugas'?'on':'')+'" onclick="setSt(\'petugas\')">Petugas Login</button><button class="'+(st==='provider'?'on':'')+'" onclick="setSt(\'provider\')">Data Provider</button><button onclick="openAdm()">Biaya Admin</button>'+(gperan==='admin'?'<button class="'+(st==='guru'?'on':'')+'" onclick="setSt(\'guru\')">Daftarkan Guru</button>':'')+'</div><div id="am">'+msg+'</div></div>'+(st==='kelas'?aKelas():st==='diskon'?aDiskon():st==='petugas'?aPetugas():st==='provider'?aProvider():st==='guru'&&gperan==='admin'?aGuru():aSiswa());
 }
 function aKelas(){
   var ks=kelasList();
